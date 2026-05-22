@@ -183,11 +183,11 @@ export default function BudgetPage() {
   if (!summary) {
     return (
       <div className="min-h-screen bg-cream px-4 py-8 max-w-2xl mx-auto space-y-6">
-        <h1 className="font-display text-3xl font-light text-warm-dark">Budget</h1>
+        <h1 className="font-display text-3xl font-light text-warm-dark">This month</h1>
         <EmptyState
           icon={Wallet}
           title="No spending data yet"
-          description="Connect your bank in Settings to see where your shopping budget is going."
+          description="Connect your bank in Settings to see where your shopping spend is going."
           action={{ label: "Go to Settings", onClick: () => router.push("/settings") }}
         />
       </div>
@@ -200,7 +200,7 @@ export default function BudgetPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-3xl font-light text-warm-dark">Budget</h1>
+          <h1 className="font-display text-3xl font-light text-warm-dark">This month</h1>
           <p className="text-sm text-muted">Your shopping this month</p>
         </div>
         <Button variant="ghost" size="sm" onClick={load}>

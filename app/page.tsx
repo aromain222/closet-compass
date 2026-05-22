@@ -101,23 +101,23 @@ export default function HomePage() {
           <QuickAction
             icon={<Shuffle size={18} className="text-warm-mid" strokeWidth={1.5} />}
             label="Find a dupe"
-            sublabel="Cheaper alternatives, ranked by quality"
+            sublabel="Same look, better materials, less money"
             href="/dupes"
             color="bg-lavender/20"
           />
           <QuickAction
-            icon={<Wallet size={18} className="text-warm-mid" strokeWidth={1.5} />}
-            label="Check budget"
-            sublabel="See what you can spend this month"
-            href="/budget"
-            color="bg-blush/20"
-          />
-          <QuickAction
             icon={<Sparkles size={18} className="text-warm-mid" strokeWidth={1.5} />}
             label="Wishlist"
-            sublabel="Your saved pieces and price alerts"
+            sublabel="Saved pieces, price drops, and tracking"
             href="/wishlist"
             color="bg-mauve/15"
+          />
+          <QuickAction
+            icon={<Wallet size={18} className="text-warm-mid" strokeWidth={1.5} />}
+            label="This month"
+            sublabel="Where your shopping spend went"
+            href="/budget"
+            color="bg-blush/20"
           />
         </div>
       </div>
