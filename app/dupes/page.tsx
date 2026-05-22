@@ -141,6 +141,7 @@ function DupesContent() {
   const [dupes, setDupes] = useState<DupeComparison[]>([]);
   const [agentSummary, setAgentSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ProductResult | null>(null);
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set());
 
@@ -194,17 +195,30 @@ function DupesContent() {
     }
   }, [maxPrice]);
 
-  async function handleSearchSubmit() {
-    const q = inputValue.trim();
+  async function handleSearchSubmit(overrideQuery?: string) {
+    const q = (overrideQuery ?? inputValue).trim();
     if (!q) return;
+    if (overrideQuery) setInputValue(overrideQuery);
     // URL: strip protocol/path to extract search hint
     const query = q.startsWith("http")
       ? q.replace(/^https?:\/\//, "").replace(/\?.*$/, "").replace(/\//g, " ").trim()
       : q;
     setStep("searching");
+    setSearchError(null);
     setError(null);
     try {
       const res = await api.search({ query, maxPrice: maxPrice ? Number(maxPrice) : undefined });
+      if (res.products.length === 0) {
+        // Stay on idle — no results to pick from
+        setStep("idle");
+        setSearchError("Nothing matched. Try a broader description — like \"silk skirt\" or \"cashmere cardigan\".");
+        return;
+      }
+      if (res.products.length === 1) {
+        // Only one match — skip the pick step and go straight to dupes
+        await findDupesForProduct(res.products[0]);
+        return;
+      }
       setSearchResults(res.products);
       setStep("results");
     } catch (e) {
@@ -228,6 +242,7 @@ function DupesContent() {
     setDupes([]);
     setSearchResults([]);
     setError(null);
+    setSearchError(null);
     router.replace("/dupes");
   }
 
@@ -275,16 +290,31 @@ function DupesContent() {
                   <Link2 size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
                   <input
                     type="text"
-                    placeholder="e.g. silk slip midi skirt — or paste a product URL"
+                    placeholder='e.g. "silk slip midi skirt" — or paste a product URL'
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => { setInputValue(e.target.value); setSearchError(null); }}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
                     className="w-full pl-9 pr-4 py-3 rounded-xl border border-soft bg-card text-sm text-warm-dark placeholder:text-muted/50 focus:outline-none focus:border-mauve transition-colors"
                   />
                 </div>
-                <p className="text-xs text-muted">
-                  Paste a product URL or describe what you&rsquo;re looking for
-                </p>
+
+                {/* Inline search error */}
+                {searchError && (
+                  <p className="text-xs text-mauve-dark">{searchError}</p>
+                )}
+
+                {/* Quick examples */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {["silk slip skirt", "cashmere cardigan", "linen trousers", "lyocell wrap dress"].map((ex) => (
+                    <button
+                      key={ex}
+                      className="text-xs text-warm-mid bg-petal border border-soft rounded-full px-3 py-1 hover:border-mauve hover:text-warm-dark transition-colors"
+                      onClick={() => handleSearchSubmit(ex)}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -309,7 +339,7 @@ function DupesContent() {
                 variant="primary"
                 size="md"
                 className="w-full"
-                onClick={handleSearchSubmit}
+                onClick={() => handleSearchSubmit()}
                 disabled={!inputValue.trim()}
               >
                 <SearchIcon size={14} /> Find alternatives
