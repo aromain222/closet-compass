@@ -5,38 +5,71 @@ interface RecommendationCardProps {
   rec: BudgetShoppingRecommendation;
 }
 
-const actionStyles: Record<string, { badge: "success" | "blush" | "muted" | "mauve"; label: string }> = {
-  buy_now: { badge: "success", label: "Buy now" },
-  wait_for_drop: { badge: "blush", label: "Wait for drop" },
-  skip_for_budget: { badge: "muted", label: "Skip for now" },
-  review_materials: { badge: "mauve", label: "Review materials" },
+type BadgeVariant = "success" | "blush" | "muted" | "lavender";
+
+interface ActionStyle {
+  badge: BadgeVariant;
+  label: string;
+  accent: string;
+}
+
+const ACTION: Record<string, ActionStyle> = {
+  buy_now: {
+    badge: "success",
+    label: "Go for it",
+    accent: "border-l-[3px] border-l-green-200",
+  },
+  wait_for_drop: {
+    badge: "lavender",
+    label: "Save for later",
+    accent: "border-l-[3px] border-l-lavender/60",
+  },
+  skip_for_budget: {
+    badge: "muted",
+    label: "Maybe next month",
+    accent: "border-l-[3px] border-l-taupe/40",
+  },
+  review_materials: {
+    badge: "blush",
+    label: "Check materials first",
+    accent: "border-l-[3px] border-l-blush/50",
+  },
 };
 
 export function RecommendationCard({ rec }: RecommendationCardProps) {
-  const style = actionStyles[rec.recommendation] ?? { badge: "muted", label: rec.recommendation };
+  const style = ACTION[rec.recommendation] ?? ACTION.skip_for_budget;
 
   return (
-    <div className="flex items-start gap-3 bg-card rounded-2xl border border-soft card-shadow p-4">
-      <div className="flex-1 min-w-0 space-y-2">
-        <div>
-          <p className="text-[11px] text-muted uppercase tracking-widest font-medium">{rec.brand}</p>
-          <p className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{rec.title}</p>
-          <p className="text-xs text-muted">{rec.retailer}</p>
-        </div>
+    <div className={`bg-card rounded-2xl border border-soft card-shadow p-4 space-y-2.5 ${style.accent}`}>
+      {/* Identity */}
+      <div>
+        <p className="text-[11px] text-muted uppercase tracking-[0.12em] font-medium">{rec.brand}</p>
+        <p className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{rec.title}</p>
+        <p className="text-xs text-muted">{rec.retailer}</p>
+      </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-warm-dark text-sm">${rec.price}</span>
-          {rec.targetPrice && rec.price <= rec.targetPrice && (
-            <Badge variant="success" size="sm">At target</Badge>
-          )}
-          <Badge variant={style.badge} size="sm">{style.label}</Badge>
-        </div>
+      {/* Price + action */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-semibold text-warm-dark">${rec.price}</span>
+        {rec.targetPrice && rec.price <= rec.targetPrice && (
+          <Badge variant="success" size="sm">At target</Badge>
+        )}
+        <Badge variant={style.badge} size="sm">{style.label}</Badge>
+      </div>
 
-        <p className="text-xs text-muted leading-relaxed">{rec.reason}</p>
+      {/* Reason — companion tone */}
+      <p className="text-xs text-muted leading-relaxed italic">{rec.reason}</p>
 
-        <div className="flex items-center gap-3 text-xs text-muted">
-          <span>Material score: <strong className="text-warm-mid">{rec.materialScore}/100</strong></span>
+      {/* Material score */}
+      <div className="flex items-center gap-2 text-xs text-muted">
+        <span>Material quality</span>
+        <div className="flex-1 h-1 rounded-full bg-petal overflow-hidden max-w-[80px]">
+          <div
+            className="h-full rounded-full bg-lavender transition-all"
+            style={{ width: `${rec.materialScore}%` }}
+          />
         </div>
+        <span className="font-medium text-warm-mid">{rec.materialScore}/100</span>
       </div>
     </div>
   );

@@ -156,6 +156,27 @@ export interface BudgetRecommendationsResponse {
   recommendations: BudgetShoppingRecommendation[];
 }
 
+export interface ShoppingTransaction {
+  id: string;
+  merchantName: string;
+  amount: number;
+  currency: string;
+  date: string;
+  shoppingCategory: string;
+  isShoppingRelated: boolean;
+}
+
+export interface PlaidTransactionsResponse {
+  mode?: string;
+  userId: string;
+  added: ShoppingTransaction[];
+  modified: ShoppingTransaction[];
+  removed: Array<{ id: string }>;
+  nextCursor?: string;
+  hasMore: boolean;
+  note?: string;
+}
+
 export interface PlaidLinkTokenResponse {
   mode: string;
   linkToken: string;
@@ -229,6 +250,9 @@ export const api = {
 
   getBudgetRecommendations: (body: BudgetRecommendationRequest) =>
     post<BudgetRecommendationsResponse>("/api/spending/recommendations", body),
+
+  getTransactions: (userId: string) =>
+    post<PlaidTransactionsResponse>("/api/plaid/transactions", { userId }),
 
   createPlaidLinkToken: (userId: string) =>
     post<PlaidLinkTokenResponse>("/api/plaid/create-link-token", { userId }),
