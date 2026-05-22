@@ -95,7 +95,7 @@ export default function HomePage() {
             icon={<Camera size={18} className="text-warm-mid" strokeWidth={1.5} />}
             label="Upload a screenshot"
             sublabel="Find items from saved photos"
-            href="/search?mode=image"
+            href="/upload"
             color="bg-petal"
           />
           <QuickAction
