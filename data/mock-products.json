@@ -1,0 +1,24 @@
+[
+  {
+    "id": "mock-modal-slip-skirt",
+    "title": "Soft Modal Slip Midi Skirt",
+    "brand": "Everlane Edit",
+    "retailer": "Northline",
+    "price": 78,
+    "currency": "USD",
+    "category": "skirt",
+    "listedMaterials": ["72% modal, 23% recycled polyester, 5% elastane"],
+    "materialHighlights": ["soft-handfeel", "has-stretch", "machine-washable"]
+  },
+  {
+    "id": "mock-cashmere-cardigan",
+    "title": "Lightweight Cashmere Cardigan",
+    "brand": "Atelier Vale",
+    "retailer": "LuxeLoop",
+    "price": 240,
+    "currency": "USD",
+    "category": "sweater",
+    "listedMaterials": ["100% cashmere"],
+    "materialHighlights": ["soft-handfeel", "premium-natural-fiber", "delicate-care"]
+  }
+]
