@@ -380,6 +380,8 @@ function SearchContent() {
         onFindDupes={handleFindDupes}
         onTrack={handleTrack}
         wishlisted={selected ? wishlisted.has(selected.id) : false}
+        tracked={selected ? tracked.has(selected.id) : false}
+        userId={userId}
       />
     </div>
   );

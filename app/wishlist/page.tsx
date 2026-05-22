@@ -320,6 +320,8 @@ export default function WishlistPage() {
         onFindDupes={(p) => { router.push(`/dupes?productId=${p.id}`); setSelected(null); }}
         onTrack={handleTrackFromModal}
         wishlisted={selected ? items.some((i) => i.product.id === selected.id) : false}
+        tracked={selected ? trackedIds.has(selected.id) : false}
+        userId={userId}
       />
     </div>
   );

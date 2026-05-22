@@ -426,6 +426,7 @@ function DupesContent() {
         onClose={() => setSelected(null)}
         onWishlist={(p) => { handleWishlist(p); }}
         wishlisted={selected ? wishlisted.has(selected.id) : false}
+        userId={userId}
       />
     </div>
   );
