@@ -169,14 +169,16 @@ export function WishlistCard({
           </button>
         )}
 
-        <a
-          href={product.productUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-muted hover:text-warm-dark transition-colors"
-        >
-          <ExternalLink size={13} />
-        </a>
+        {product.source !== "mock" && (
+          <a
+            href={product.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-muted hover:text-warm-dark transition-colors"
+          >
+            <ExternalLink size={13} />
+          </a>
+        )}
       </div>
     </article>
   );

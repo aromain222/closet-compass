@@ -213,15 +213,17 @@ export function DupeCard({ comparison, onSelect, onWishlist, wishlisted = false 
           <Heart size={13} fill={wishlisted ? "currentColor" : "none"} />
           {wishlisted ? "Saved" : "Save"}
         </Button>
-        <a
-          href={alt.productUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border border-border-strong text-warm-mid hover:border-mauve hover:bg-lavender/10 hover:text-warm-dark transition-all"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Shop <ExternalLink size={12} />
-        </a>
+        {alt.source !== "mock" && (
+          <a
+            href={alt.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border border-border-strong text-warm-mid hover:border-mauve hover:bg-lavender/10 hover:text-warm-dark transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Shop <ExternalLink size={12} />
+          </a>
+        )}
       </div>
     </article>
   );

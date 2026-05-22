@@ -81,15 +81,17 @@ export function ProductCard({ product, onSelect, onWishlist, wishlisted = false,
         {!compact && (
           <div className="flex items-center justify-between pt-1">
             <Badge variant="warm" size="sm">{product.category}</Badge>
-            <a
-              href={product.productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted hover:text-warm-dark transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink size={13} />
-            </a>
+            {product.source !== "mock" && (
+              <a
+                href={product.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted hover:text-warm-dark transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink size={13} />
+              </a>
+            )}
           </div>
         )}
       </div>

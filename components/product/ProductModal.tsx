@@ -365,14 +365,16 @@ export function ProductModal({
               <Shuffle size={13} /> Dupes
             </Button>
           )}
-          <a
-            href={product.productUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-warm-dark transition-colors px-3 py-2 ml-auto"
-          >
-            Shop <ExternalLink size={13} />
-          </a>
+          {product.source !== "mock" && (
+            <a
+              href={product.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-warm-dark transition-colors px-3 py-2 ml-auto"
+            >
+              Shop <ExternalLink size={13} />
+            </a>
+          )}
         </div>
       </div>
     </div>

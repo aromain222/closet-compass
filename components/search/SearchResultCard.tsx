@@ -254,14 +254,16 @@ export function SearchResultCard({
               <Shuffle size={13} /> Find dupes
             </button>
 
-            <a
-              href={product.productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 text-xs text-muted hover:text-warm-dark transition-colors"
-            >
-              Shop <ExternalLink size={12} />
-            </a>
+            {product.source !== "mock" && (
+              <a
+                href={product.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto flex items-center gap-1 text-xs text-muted hover:text-warm-dark transition-colors"
+              >
+                Shop <ExternalLink size={12} />
+              </a>
+            )}
           </div>
         </div>
       </div>
