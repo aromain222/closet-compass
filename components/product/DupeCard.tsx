@@ -1,87 +1,213 @@
 "use client";
 
 import Image from "next/image";
-import { ExternalLink, Heart } from "lucide-react";
-import type { DupeComparison } from "@/lib/products/types";
+import { ExternalLink, Heart, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import type { DupeComparison, DupeRecommendationLabel } from "@/lib/products/types";
 import { Badge } from "@/components/ui/badge";
 import { ScoreBar } from "./MaterialBadge";
 import { Button } from "@/components/ui/button";
 
-interface DupeCardProps {
+/* ── Recommendation config ── */
+
+type BadgeVariant = "success" | "blush" | "mauve" | "muted";
+
+interface RecConfig {
+  badge: BadgeVariant;
+  label: string;
+  note: string;
+  accent: string;
+}
+
+const REC: Record<DupeRecommendationLabel, RecConfig> = {
+  strong_dupe: {
+    badge: "success",
+    label: "Best Dupe",
+    note: "Strong match — similar materials, meaningful savings.",
+    accent: "border-l-[3px] border-l-green-300",
+  },
+  worth_the_splurge: {
+    badge: "blush",
+    label: "Worth the Splurge",
+    note: "The original may be worth paying more for — materials or quality differ meaningfully.",
+    accent: "border-l-[3px] border-l-blush",
+  },
+  consider: {
+    badge: "mauve",
+    label: "Consider",
+    note: "Some trade-offs — review material and fit notes before buying.",
+    accent: "border-l-[3px] border-l-mauve/60",
+  },
+  avoid: {
+    badge: "muted",
+    label: "Skip",
+    note: "Material or quality gaps are too significant.",
+    accent: "border-l-[3px] border-l-taupe/60",
+  },
+};
+
+/* ── Fiber lines ── */
+
+function fiberList(
+  normalized: Array<{ fiber: string; percentage: number | null }>,
+  raw: string[]
+) {
+  return normalized.length > 0 ? normalized : raw.map((f) => ({ fiber: f, percentage: null }));
+}
+
+function FiberLines({ fibers }: { fibers: Array<{ fiber: string; percentage: number | null }> }) {
+  if (fibers.length === 0)
+    return <span className="text-xs text-muted italic">Not disclosed</span>;
+  return (
+    <>
+      {fibers.slice(0, 4).map((m, i) => (
+        <span key={i} className="text-xs text-warm-dark leading-snug">
+          {m.percentage != null && (
+            <span className="text-muted text-[11px]">{m.percentage}%&thinsp;</span>
+          )}
+          {m.fiber}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/* ── Card ── */
+
+export interface DupeCardProps {
   comparison: DupeComparison;
-  onSelect?: (comparison: DupeComparison) => void;
-  onWishlist?: (comparison: DupeComparison) => void;
+  onSelect?: (c: DupeComparison) => void;
+  onWishlist?: (c: DupeComparison) => void;
   wishlisted?: boolean;
 }
 
-const labelStyles: Record<string, { badge: "success" | "mauve" | "muted" | "blush"; text: string }> = {
-  strong_dupe: { badge: "success", text: "Strong dupe" },
-  worth_the_splurge: { badge: "blush", text: "Worth the splurge" },
-  consider: { badge: "mauve", text: "Consider" },
-  avoid: { badge: "muted", text: "Avoid" },
-};
+export function DupeCard({ comparison, onSelect, onWishlist, wishlisted = false }: DupeCardProps) {
+  const { sourceProduct: src, alternativeProduct: alt, score } = comparison;
+  const cfg = REC[score.recommendation] ?? REC.consider;
 
-export function DupeCard({ comparison, onSelect, onWishlist, wishlisted }: DupeCardProps) {
-  const { alternativeProduct: alt, score } = comparison;
-  const saving = comparison.sourceProduct.price - alt.price;
-  const { badge, text } = labelStyles[score.recommendation] ?? { badge: "muted", text: score.recommendation };
+  const saving = src.price - alt.price;
+  const savingPct = saving > 0 ? Math.round((saving / src.price) * 100) : 0;
+
+  const srcFibers = fiberList(src.normalizedMaterials, src.listedMaterials);
+  const altFibers = fiberList(alt.normalizedMaterials, alt.listedMaterials);
 
   return (
-    <div
-      className="bg-card rounded-2xl border border-soft card-shadow hover:card-shadow-hover transition-all cursor-pointer overflow-hidden"
-      onClick={() => onSelect?.(comparison)}
+    <article
+      className={`bg-card rounded-2xl border border-soft card-shadow hover:card-shadow-hover transition-all overflow-hidden ${cfg.accent}`}
     >
-      <div className="flex gap-3 p-3">
-        {/* Image */}
-        <div className="relative w-24 h-32 rounded-xl overflow-hidden bg-petal shrink-0">
-          <Image
-            src={alt.imageUrl}
-            alt={alt.title}
-            fill
-            className="object-cover"
-            sizes="96px"
-            unoptimized
-          />
+      {/* ── Identity + price ── */}
+      <div
+        className="flex gap-4 p-5 cursor-pointer"
+        onClick={() => onSelect?.(comparison)}
+      >
+        {/* Thumbnail */}
+        <div className="relative w-24 shrink-0 rounded-xl overflow-hidden bg-petal">
+          <div className="aspect-[3/4] relative">
+            <Image
+              src={alt.imageUrl}
+              alt={alt.title}
+              fill
+              sizes="96px"
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+          <div className="absolute bottom-0 inset-x-0 p-1.5 bg-gradient-to-t from-warm-dark/70 to-transparent flex justify-center">
+            <Badge variant={cfg.badge} className="text-[10px] max-w-full truncate">
+              {cfg.label}
+            </Badge>
+          </div>
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0 space-y-2">
           <div>
-            <p className="text-[11px] text-muted uppercase tracking-widest font-medium">{alt.brand}</p>
-            <p className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{alt.title}</p>
+            <p className="text-[11px] text-muted uppercase tracking-[0.12em] font-medium">{alt.brand}</p>
+            <h3 className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{alt.title}</h3>
+            <p className="text-xs text-muted">{alt.retailer}</p>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-semibold text-warm-dark">${alt.price}</span>
+          {/* Price comparison */}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-xl font-semibold text-warm-dark">${alt.price}</span>
+            <span className="text-sm text-muted line-through">${src.price}</span>
             {saving > 0 && (
-              <Badge variant="success">Save ${saving}</Badge>
+              <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                <TrendingDown size={11} />
+                Save ${saving.toFixed(0)} ({savingPct}%)
+              </span>
             )}
-            <Badge variant={badge}>{text}</Badge>
+            {saving < 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted">
+                <TrendingUp size={11} />
+                ${Math.abs(saving).toFixed(0)} more than original
+              </span>
+            )}
           </div>
 
-          <div className="space-y-1.5">
-            <ScoreBar label="Match" score={score.finalDupeScore} color="bg-blush" />
-            <ScoreBar label="Material" score={score.materialSimilarity} color="bg-lavender" />
-          </div>
-
-          <p className="text-xs text-muted line-clamp-2">{score.explanation}</p>
+          <p className="text-xs text-muted italic leading-relaxed">{cfg.note}</p>
         </div>
       </div>
 
-      {/* Risks */}
+      {/* ── Material comparison ── */}
+      <div className="mx-5 mb-4 rounded-xl border border-soft overflow-hidden">
+        <div className="grid grid-cols-2 divide-x divide-soft">
+          <div className="p-3 bg-petal/50">
+            <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-2">Original</p>
+            <div className="flex flex-col gap-0.5">
+              <FiberLines fibers={srcFibers} />
+            </div>
+          </div>
+          <div className="p-3 bg-card">
+            <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-2">This dupe</p>
+            <div className="flex flex-col gap-0.5">
+              <FiberLines fibers={altFibers} />
+            </div>
+          </div>
+        </div>
+        {score.materialExplanation && (
+          <div className="px-3 py-2.5 border-t border-soft">
+            <p className="text-xs text-muted leading-relaxed">{score.materialExplanation}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Score bars ── */}
+      <div className="mx-5 mb-4 space-y-2">
+        <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Comparison</p>
+        <ScoreBar label="Overall" score={score.finalDupeScore} color="bg-blush" />
+        <ScoreBar label="Material" score={score.materialSimilarity} color="bg-lavender" />
+        <ScoreBar label="Fit" score={score.fitSimilarity} color="bg-taupe" />
+        {score.visualSimilarity > 0 && (
+          <ScoreBar label="Visual" score={score.visualSimilarity} color="bg-mauve" />
+        )}
+        <ScoreBar label="Quality" score={score.brandReviewQuality} color="bg-petal" />
+      </div>
+
+      {/* ── Explanation ── */}
+      {score.explanation && (
+        <p className="mx-5 mb-4 text-xs text-muted leading-relaxed border-l-2 border-blush/40 pl-3 italic">
+          {score.explanation}
+        </p>
+      )}
+
+      {/* ── Risk notes ── */}
       {score.risks.length > 0 && (
-        <div className="px-3 pb-3">
-          <p className="text-[11px] text-muted">
-            ⚠ {score.risks.slice(0, 2).join(" · ")}
+        <div className="mx-5 mb-4 rounded-xl bg-taupe/10 border border-taupe/25 px-3 py-2.5 space-y-1">
+          <p className="text-[10px] text-warm-mid uppercase tracking-wider font-semibold flex items-center gap-1">
+            <AlertTriangle size={10} /> Risk notes
           </p>
+          {score.risks.map((r, i) => (
+            <p key={i} className="text-xs text-warm-mid leading-snug">{r}</p>
+          ))}
         </div>
       )}
 
-      <div className="flex gap-2 px-3 pb-3">
+      {/* ── CTAs ── */}
+      <div className="flex gap-2 px-5 pb-5 pt-2 border-t border-soft">
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1 justify-center"
+          className="flex items-center gap-1.5"
           onClick={(e) => { e.stopPropagation(); onWishlist?.(comparison); }}
         >
           <Heart size={13} fill={wishlisted ? "currentColor" : "none"} />
@@ -91,12 +217,12 @@ export function DupeCard({ comparison, onSelect, onWishlist, wishlisted }: DupeC
           href={alt.productUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted hover:text-warm-dark transition-colors py-2"
+          className="ml-auto flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border border-border-strong text-warm-mid hover:border-mauve hover:bg-lavender/10 hover:text-warm-dark transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           Shop <ExternalLink size={12} />
         </a>
       </div>
-    </div>
+    </article>
   );
 }
