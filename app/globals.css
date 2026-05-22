@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-cream: #FAF8F5;
+  --color-petal: #F5F0EB;
+  --color-blush: #E8B4A8;
+  --color-blush-dark: #D4978A;
+  --color-mauve: #C49A9A;
+  --color-mauve-dark: #A87878;
+  --color-taupe: #B8A99A;
+  --color-lavender: #C5B8D8;
+  --color-lavender-dark: #A89BBE;
+  --color-border: #EDE8E3;
+  --color-border-strong: #DDD4CA;
+  --color-muted: #8C7B70;
+  --color-warm-dark: #2C1A14;
+  --color-warm-mid: #5C4E43;
+  --color-card: #FFFFFF;
+  --color-success-soft: #A8C4A8;
+
+  --shadow-card: 0 2px 12px rgba(44, 26, 20, 0.06);
+  --shadow-card-hover: 0 4px 20px rgba(44, 26, 20, 0.10);
+  --shadow-modal: 0 8px 40px rgba(44, 26, 20, 0.14);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-cream);
+    color: var(--color-warm-dark);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    min-height: 100dvh;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: var(--color-blush);
+    color: var(--color-warm-dark);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mauve);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-sans { font-family: var(--font-sans); }
+  .text-balance { text-wrap: balance; }
+
+  .card-shadow { box-shadow: var(--shadow-card); }
+  .card-shadow-hover { box-shadow: var(--shadow-card-hover); }
+  .modal-shadow { box-shadow: var(--shadow-modal); }
+
+  .bg-cream { background-color: var(--color-cream); }
+  .bg-petal { background-color: var(--color-petal); }
+  .bg-blush { background-color: var(--color-blush); }
+  .bg-mauve { background-color: var(--color-mauve); }
+  .bg-taupe { background-color: var(--color-taupe); }
+  .bg-lavender { background-color: var(--color-lavender); }
+  .bg-card { background-color: var(--color-card); }
+
+  .text-warm-dark { color: var(--color-warm-dark); }
+  .text-warm-mid { color: var(--color-warm-mid); }
+  .text-muted { color: var(--color-muted); }
+  .text-blush { color: var(--color-blush-dark); }
+  .text-mauve { color: var(--color-mauve-dark); }
+
+  .border-soft { border-color: var(--color-border); }
+  .border-warm { border-color: var(--color-border-strong); }
+
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}
