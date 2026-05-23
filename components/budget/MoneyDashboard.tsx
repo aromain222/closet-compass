@@ -1,14 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import {
   type DashboardData,
   formatCurrency, percentChange, generateInsights, getGreeting,
 } from "@/lib/mock/spendingData";
 import { SpendingInsightCard } from "./SpendingInsightCard";
-import { SpendingTrendChart } from "./SpendingTrendChart";
-import { SpendingBreakdownChart } from "./SpendingBreakdownChart";
 import { Button } from "@/components/ui/button";
+
+const SpendingTrendChart = dynamic(
+  () => import("./SpendingTrendChart").then(m => m.SpendingTrendChart),
+  { ssr: false, loading: () => <div className="h-[160px] rounded-xl bg-petal animate-pulse" /> }
+);
+
+const SpendingBreakdownChart = dynamic(
+  () => import("./SpendingBreakdownChart").then(m => m.SpendingBreakdownChart),
+  { ssr: false, loading: () => <div className="h-[110px] rounded-xl bg-petal animate-pulse" /> }
+);
 
 /* ── helpers ── */
 
@@ -110,9 +119,10 @@ interface Props {
   data: DashboardData;
   onRefresh?: () => void;
   isMockPreview?: boolean;
+  refreshing?: boolean;
 }
 
-export function MoneyDashboard({ data, onRefresh, isMockPreview }: Props) {
+export function MoneyDashboard({ data, onRefresh, isMockPreview, refreshing }: Props) {
   const greeting = getGreeting();
   const insights = generateInsights(data);
   const totalDelta = percentChange(data.totalSpend, data.prevTotalSpend);
@@ -141,8 +151,8 @@ export function MoneyDashboard({ data, onRefresh, isMockPreview }: Props) {
           </p>
         </div>
         {onRefresh && (
-          <Button variant="ghost" size="sm" onClick={onRefresh} className="shrink-0 mt-1.5">
-            <RefreshCw size={13} />
+          <Button variant="ghost" size="sm" onClick={onRefresh} className="shrink-0 mt-1.5" disabled={refreshing}>
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
           </Button>
         )}
       </div>
