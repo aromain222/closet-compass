@@ -82,7 +82,7 @@ function mapAmazonProduct(p: any, query: string): ProductResult {
 
 async function searchAmazonProducts(input: ProductSearchInput): Promise<ProductResult[]> {
   const env = getServerEnv();
-  if (!env.rapidApiKey) return searchMockProducts(input);
+  if (!env.rapidApiKey) return [];
 
   const params = new URLSearchParams({
     query: input.query,
@@ -104,12 +104,12 @@ async function searchAmazonProducts(input: ProductSearchInput): Promise<ProductR
         next: { revalidate: 300 },
       }
     );
-    if (!res.ok) return searchMockProducts(input);
+    if (!res.ok) return [];
     const json = await res.json();
     const products: unknown[] = json?.data?.products ?? [];
     return products.slice(0, 12).map((p) => mapAmazonProduct(p, input.query));
   } catch {
-    return searchMockProducts(input);
+    return [];
   }
 }
 

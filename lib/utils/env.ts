@@ -27,9 +27,9 @@ export function getServerEnv(): ServerEnv {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     shoppingProvider:
-      provider === "serpapi" || provider === "searchapi" || provider === "retailer" || provider === "amazon"
+      provider === "serpapi" || provider === "searchapi" || provider === "retailer" || provider === "mock"
         ? provider
-        : "mock",
+        : "amazon",
     serpApiKey: process.env.SERPAPI_API_KEY,
     searchApiKey: process.env.SEARCHAPI_API_KEY,
     rapidApiKey: process.env.RAPIDAPI_KEY,
