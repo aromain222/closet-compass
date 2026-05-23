@@ -1,0 +1,14 @@
+{
+  "id": "session-1779480845561",
+  "startedAt": "2026-05-22T20:14:05.561Z",
+  "cwd": "/Users/averyromain/material-muse",
+  "context": {},
+  "metrics": {
+    "edits": 13,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-05-22T21:28:26.392Z",
+  "duration": 4460839
+}
