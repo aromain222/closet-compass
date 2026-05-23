@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Shuffle, Search as SearchIcon, Link2, Heart, ExternalLink } from "lucide-react";
 import { DupeCard } from "@/components/product/DupeCard";
 import { ProductCard } from "@/components/product/ProductCard";
-import { ProductModal } from "@/components/product/ProductModal";
+import { DupeComparisonModal } from "@/components/product/DupeComparisonModal";
 import { SearchResultsSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
@@ -191,7 +191,7 @@ function DupesContent() {
   const [agentSummary, setAgentSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<ProductResult | null>(null);
+  const [selected, setSelected] = useState<DupeComparison | null>(null);
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set());
 
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
@@ -487,7 +487,7 @@ function DupesContent() {
                 <DupeCard
                   key={comparison.alternativeProduct.id}
                   comparison={comparison}
-                  onSelect={(c) => setSelected(c.alternativeProduct)}
+                  onSelect={(c) => setSelected(c)}
                   onWishlist={(c) => handleWishlist(c.alternativeProduct)}
                   wishlisted={wishlisted.has(comparison.alternativeProduct.id)}
                 />
@@ -497,12 +497,11 @@ function DupesContent() {
         </div>
       )}
 
-      <ProductModal
-        product={selected}
+      <DupeComparisonModal
+        comparison={selected}
         onClose={() => setSelected(null)}
-        onWishlist={(p) => { handleWishlist(p); }}
-        wishlisted={selected ? wishlisted.has(selected.id) : false}
-        userId={userId}
+        onWishlist={(c) => handleWishlist(c.alternativeProduct)}
+        wishlisted={selected ? wishlisted.has(selected.alternativeProduct.id) : false}
       />
     </div>
   );

@@ -69,6 +69,17 @@ export function ProductCard({ product, onSelect, onWishlist, wishlisted = false,
           {product.originalPrice && (
             <span className="text-[12px] text-muted line-through">${product.originalPrice}</span>
           )}
+          {compact && product.source !== "mock" && (
+            <a
+              href={product.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto text-muted hover:text-warm-dark transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink size={12} />
+            </a>
+          )}
         </div>
 
         {!compact && (
