@@ -34,9 +34,10 @@ function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
     .slice(0, 4)
     .join(" ");
 
-  if (category === "jewelry") return (keywords || "jewelry") + " dupe";
-  if (category === "bag") return (keywords || "bag") + " dupe alternative";
-  return keywords || source.category;
+  if (category === "jewelry") return (keywords || source.title) + " jewelry dupe";
+  if (category === "bag") return (keywords || source.title) + " bag dupe alternative";
+  // Fallback to full title so "Miss Dior" doesn't search for "clothing"
+  return keywords || source.title;
 }
 
 export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons: DupeComparison[]; category: DupeCategory }> {
