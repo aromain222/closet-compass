@@ -3,9 +3,10 @@ import "server-only";
 export interface ServerEnv {
   supabaseUrl?: string;
   supabaseServiceRoleKey?: string;
-  shoppingProvider: "mock" | "serpapi" | "searchapi" | "retailer";
+  shoppingProvider: "mock" | "serpapi" | "searchapi" | "retailer" | "amazon";
   serpApiKey?: string;
   searchApiKey?: string;
+  rapidApiKey?: string;
   plaidClientId?: string;
   plaidSecret?: string;
   plaidEnv: "sandbox" | "development" | "production";
@@ -26,11 +27,12 @@ export function getServerEnv(): ServerEnv {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     shoppingProvider:
-      provider === "serpapi" || provider === "searchapi" || provider === "retailer"
+      provider === "serpapi" || provider === "searchapi" || provider === "retailer" || provider === "amazon"
         ? provider
         : "mock",
     serpApiKey: process.env.SERPAPI_API_KEY,
     searchApiKey: process.env.SEARCHAPI_API_KEY,
+    rapidApiKey: process.env.RAPIDAPI_KEY,
     plaidClientId: process.env.PLAID_CLIENT_ID,
     plaidSecret: process.env.PLAID_SECRET,
     plaidEnv:
