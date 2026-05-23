@@ -11,13 +11,17 @@ interface DupeAgentInput {
 }
 
 function buildDupeQuery(source: ProductResult): string {
-  // Extract meaningful keywords from the title (skip short/common words)
-  const stopWords = new Set(["the", "and", "for", "with", "from", "that", "this", "are", "was"]);
+  // Use category + key style words from title, excluding brand/retailer names
+  // so dupes come from different brands
+  const brandWords = new Set(
+    [...source.brand.toLowerCase().split(/\s+/), ...source.retailer.toLowerCase().split(/\s+/)]
+  );
+  const stopWords = new Set(["the", "and", "for", "with", "from", "that", "this", "are", "was", "mens", "womens", "women", "men"]);
   const keywords = source.title
     .toLowerCase()
     .split(/\s+/)
-    .filter((w) => w.length > 3 && !stopWords.has(w))
-    .slice(0, 3)
+    .filter((w) => w.length >= 3 && !stopWords.has(w) && !brandWords.has(w))
+    .slice(0, 4)
     .join(" ");
   return keywords || source.category;
 }

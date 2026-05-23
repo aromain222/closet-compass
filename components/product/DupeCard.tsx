@@ -171,16 +171,61 @@ export function DupeCard({ comparison, onSelect, onWishlist, wishlisted = false 
         )}
       </div>
 
-      {/* ── Score bars ── */}
+      {/* ── Side-by-side quality scores ── */}
+      {(src.softnessScore > 0 || alt.softnessScore > 0 ||
+        src.breathabilityScore > 0 || alt.breathabilityScore > 0) && (
+        <div className="mx-5 mb-4 space-y-1.5">
+          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Quality scores</p>
+          {([
+            { label: "Softness",      srcV: src.softnessScore,      altV: alt.softnessScore,      color: "bg-blush" },
+            { label: "Breathability", srcV: src.breathabilityScore, altV: alt.breathabilityScore, color: "bg-lavender" },
+            { label: "Opacity",       srcV: src.opacityScore,       altV: alt.opacityScore,       color: "bg-mauve" },
+            { label: "Durability",    srcV: src.durabilityScore,    altV: alt.durabilityScore,    color: "bg-taupe" },
+            { label: "Stretch",       srcV: src.stretchScore,       altV: alt.stretchScore,       color: "bg-lavender" },
+          ] as const).filter((s) => s.srcV > 0 || s.altV > 0).map((s) => {
+            const diff = s.altV - s.srcV;
+            return (
+              <div key={s.label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                {/* Original bar (right-aligned) */}
+                <div className="flex items-center gap-1 justify-end">
+                  <span className="text-[10px] tabular-nums text-muted">{s.srcV}</span>
+                  <div className="w-16 h-1.5 bg-petal rounded-full overflow-hidden">
+                    <div className={`h-full ${s.color} opacity-50 rounded-full ml-auto`} style={{ width: `${s.srcV}%` }} />
+                  </div>
+                </div>
+                {/* Label + diff */}
+                <div className="text-center min-w-[68px]">
+                  <span className="text-[10px] text-muted block">{s.label}</span>
+                  {diff !== 0 && (
+                    <span className={`text-[10px] font-semibold ${diff < -8 ? "text-red-400" : diff > 8 ? "text-green-600" : "text-muted"}`}>
+                      {diff > 0 ? `+${diff}` : diff}
+                    </span>
+                  )}
+                </div>
+                {/* Dupe bar (left-aligned) */}
+                <div className="flex items-center gap-1">
+                  <div className="w-16 h-1.5 bg-petal rounded-full overflow-hidden">
+                    <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.altV}%` }} />
+                  </div>
+                  <span className="text-[10px] tabular-nums text-muted">{s.altV}</span>
+                </div>
+              </div>
+            );
+          })}
+          <div className="grid grid-cols-[1fr_auto_1fr] text-[10px] text-muted/50 pt-0.5">
+            <span className="text-right">Original</span>
+            <span />
+            <span>This dupe</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Match scores ── */}
       <div className="mx-5 mb-4 space-y-2">
-        <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Comparison</p>
+        <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Match scores</p>
         <ScoreBar label="Overall" score={score.finalDupeScore} color="bg-blush" />
         <ScoreBar label="Material" score={score.materialSimilarity} color="bg-lavender" />
         <ScoreBar label="Fit" score={score.fitSimilarity} color="bg-taupe" />
-        {score.visualSimilarity > 0 && (
-          <ScoreBar label="Visual" score={score.visualSimilarity} color="bg-mauve" />
-        )}
-        <ScoreBar label="Quality" score={score.brandReviewQuality} color="bg-petal" />
       </div>
 
       {/* ── Explanation ── */}
