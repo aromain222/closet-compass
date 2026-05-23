@@ -11,9 +11,25 @@ interface EnrichedMaterials {
   careInstructions: string[];
   materialConfidence: number;
   materialConfidenceLabel: MaterialConfidenceLabel;
+  proprietaryBlendNote: string | null;
 }
 
-const SYSTEM_PROMPT = `You are a fabric and textile expert. Given a clothing product title and description, extract material composition and quality attributes. Return ONLY valid JSON, no explanation.`;
+const SYSTEM_PROMPT = `You are a fabric and textile expert. Given a clothing product title and description, extract material composition and quality attributes. Return ONLY valid JSON, no explanation.
+
+You have deep knowledge of proprietary fabric names. When you encounter them, decode their actual fiber content:
+- Lululemon Luon: ~81% nylon, 19% Lycra elastane — buttery soft, four-way stretch, moisture-wicking
+- Lululemon Nulu: nylon/elastane — ultra-soft, lightweight, barely-there feel
+- Lululemon Everlux: polyester/elastane — sweat-wicking, fast-drying, compression
+- Lululemon Scuba: cotton-feel polyester/elastane — cozy, medium weight
+- Lululemon Swift: nylon — lightweight, moisture-wicking, minimal stretch
+- Lululemon Warpstreme: polyester/elastane — four-way stretch, sweat-wicking, technical
+- Nike Dri-FIT: polyester — moisture-wicking performance fabric
+- Under Armour HeatGear: polyester/elastane — compression, moisture-wicking
+- Patagonia Capilene: recycled polyester — moisture-wicking, odor-resistant
+- Outdoor Voices TechSweat: recycled polyester/elastane — soft, four-way stretch
+- Alo Warrior: nylon/elastane — compression, high-shine
+- Vuori Performance: recycled polyester/elastane — soft, moisture-wicking
+- Athleta PowerVita: nylon/elastane — four-way stretch, moisture-wicking`;
 
 function buildUserPrompt(product: ProductResult): string {
   const text = [product.title, product.description].filter(Boolean).join("\n");
@@ -21,23 +37,24 @@ function buildUserPrompt(product: ProductResult): string {
 
 Return JSON:
 {
-  "fibers": [{"fiber": "cotton", "percentage": 95}, {"fiber": "elastane", "percentage": 5}],
+  "fibers": [{"fiber": "nylon", "percentage": 81}, {"fiber": "elastane", "percentage": 19}],
   "softnessScore": 0-100,
   "breathabilityScore": 0-100,
   "opacityScore": 0-100,
   "durabilityScore": 0-100,
   "stretchScore": 0-100,
   "careInstructions": ["machine wash cold"],
-  "materialConfidence": 0.0-1.0
+  "materialConfidence": 0.0-1.0,
+  "proprietaryBlendNote": "Luon is Lululemon's signature fabric — 81% nylon, 19% Lycra. Exceptionally soft with four-way stretch and moisture-wicking. Dupes should be nylon-elastane blends." or null if no proprietary blend
 }
 
-Rules:
+Scoring rules:
 - softnessScore: silk/cashmere/modal=85-95, cotton=60-75, linen=55-65, polyester=40-55, acrylic=30-45
 - breathabilityScore: linen/cotton=80-90, silk=75-85, modal=70-80, polyester=30-50, nylon=25-45
 - opacityScore: denim/wool=85-95, cotton=60-80, silk=40-65, sheer/chiffon=15-35
 - durabilityScore: denim/nylon=85-95, cotton=65-75, silk=45-60, linen=55-70, viscose=40-55
 - stretchScore: elastane/spandex blends=70-95, knits=50-70, woven non-stretch=5-20
-- materialConfidence: 0.9 if exact percentages found, 0.6 if fibers named without %, 0.2 if inferred only
+- materialConfidence: 0.9 if exact percentages found, 0.7 if proprietary blend decoded, 0.5 if fibers named without %, 0.2 if inferred only
 - If no material info at all: return all scores as 0 and confidence 0.1`;
 }
 
@@ -64,6 +81,7 @@ function parseEnrichmentResponse(raw: string): EnrichedMaterials | null {
       careInstructions: (json.careInstructions ?? []).map(String),
       materialConfidence: confidence,
       materialConfidenceLabel: label,
+      proprietaryBlendNote: typeof json.proprietaryBlendNote === "string" ? json.proprietaryBlendNote : null,
     };
   } catch {
     return null;
@@ -98,6 +116,7 @@ async function enrichOne(client: Anthropic, product: ProductResult): Promise<Pro
         : product.careInstructions,
       materialConfidence: enriched.materialConfidence,
       materialConfidenceLabel: enriched.materialConfidenceLabel,
+      reviewSummary: enriched.proprietaryBlendNote ?? product.reviewSummary,
     };
   } catch {
     return product;
