@@ -3,10 +3,8 @@ import "server-only";
 export interface ServerEnv {
   supabaseUrl?: string;
   supabaseServiceRoleKey?: string;
-  shoppingProvider: "mock" | "serpapi" | "searchapi" | "retailer" | "amazon";
-  serpApiKey?: string;
-  searchApiKey?: string;
   rapidApiKey?: string;
+  serperApiKey?: string;
   plaidClientId?: string;
   plaidSecret?: string;
   plaidEnv: "sandbox" | "development" | "production";
@@ -20,19 +18,13 @@ export interface ServerEnv {
 }
 
 export function getServerEnv(): ServerEnv {
-  const provider = process.env.SHOPPING_PROVIDER;
   const plaidEnv = process.env.PLAID_ENV;
 
   return {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    shoppingProvider:
-      provider === "serpapi" || provider === "searchapi" || provider === "retailer" || provider === "mock"
-        ? provider
-        : "amazon",
-    serpApiKey: process.env.SERPAPI_API_KEY,
-    searchApiKey: process.env.SEARCHAPI_API_KEY,
     rapidApiKey: process.env.RAPIDAPI_KEY,
+    serperApiKey: process.env.SERPER_API_KEY,
     plaidClientId: process.env.PLAID_CLIENT_ID,
     plaidSecret: process.env.PLAID_SECRET,
     plaidEnv:
@@ -43,7 +35,7 @@ export function getServerEnv(): ServerEnv {
     stripePriceId: process.env.STRIPE_PRICE_ID,
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     stripeSuccessUrl: process.env.STRIPE_SUCCESS_URL,
-    stripeCancelUrl: process.env.STRIPE_CANCEL_URL
+    stripeCancelUrl: process.env.STRIPE_CANCEL_URL,
   };
 }
 

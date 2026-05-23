@@ -1,5 +1,4 @@
 import type { ProductResult, ProductSearchInput } from "@/lib/products/types";
-import { searchMockProducts } from "@/lib/products/mockProvider";
 import { getServerEnv } from "@/lib/utils/env";
 
 export interface ProductSearchProvider {
@@ -7,7 +6,7 @@ export interface ProductSearchProvider {
   getById(id: string): Promise<ProductResult | null>;
 }
 
-/* ── helpers ── */
+/* ── shared helpers ── */
 
 function parsePrice(raw: string | null | undefined): number {
   if (!raw) return 0;
@@ -16,17 +15,15 @@ function parsePrice(raw: string | null | undefined): number {
 }
 
 function inferBrand(title: string): string {
-  // Amazon titles often start with brand: "Brand Name Product Description..."
   const words = title.split(" ");
-  if (words.length >= 2) return words.slice(0, 2).join(" ");
-  return words[0] ?? "Unknown";
+  return words.length >= 2 ? words.slice(0, 2).join(" ") : (words[0] ?? "Unknown");
 }
 
 function inferCategory(query: string): string {
   const q = query.toLowerCase();
   if (/\b(dress|gown|sundress)\b/.test(q)) return "dress";
   if (/\b(jean|denim|pant|trouser|legging|chino)\b/.test(q)) return "pants";
-  if (/\b(shirt|blouse|top|tee|tank)\b/.test(q)) return "tops";
+  if (/\b(shirt|blouse|top|tee|tank|polo)\b/.test(q)) return "tops";
   if (/\b(sweater|cardigan|pullover|knit|hoodie)\b/.test(q)) return "sweater";
   if (/\b(jacket|coat|blazer|vest|outerwear)\b/.test(q)) return "outerwear";
   if (/\b(skirt|mini|midi|maxi)\b/.test(q)) return "skirt";
@@ -35,18 +32,29 @@ function inferCategory(query: string): string {
   return "clothing";
 }
 
-function extractMaterialsFromTitle(title: string): string[] {
-  const matches = title.match(
+function extractMaterials(text: string): string[] {
+  const matches = text.match(
     /\b(cotton|linen|silk|wool|cashmere|modal|lyocell|viscose|rayon|polyester|nylon|elastane|spandex|acrylic|leather|suede)\b/gi
   );
   return matches ? [...new Set(matches.map((m) => m.toLowerCase()))] : [];
 }
 
+function makeMaterialBlend(materials: string[]) {
+  return materials.map((f) => ({ fiber: f, percentage: null }));
+}
+
+function confidenceLabel(materials: string[]): "low" | "medium" | "high" {
+  if (materials.length === 0) return "low";
+  return "low";
+}
+
+/* ── Amazon provider ── */
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAmazonProduct(p: any, query: string): ProductResult {
-  const price = parsePrice(p.product_price);
+  const price = parsePrice(p.product_price ?? p.product_minimum_offer_price);
   const originalPrice = parsePrice(p.product_original_price);
-  const materials = extractMaterialsFromTitle(p.product_title ?? "");
+  const materials = extractMaterials(p.product_title ?? "");
   const asin: string = p.asin ?? p.product_asin ?? "";
 
   return {
@@ -58,16 +66,16 @@ function mapAmazonProduct(p: any, query: string): ProductResult {
     originalPrice: originalPrice > price ? originalPrice : undefined,
     currency: "USD",
     productUrl: p.product_url ?? `https://www.amazon.com/dp/${asin}`,
-    imageUrl: p.product_photo ?? p.thumbnail ?? "",
+    imageUrl: p.product_photo ?? "",
     category: inferCategory(query),
     colors: [],
     sizes: [],
     description: p.product_title ?? "",
     listedMaterials: materials,
     inferredMaterials: materials,
-    normalizedMaterials: materials.map((f) => ({ fiber: f, percentage: null })),
+    normalizedMaterials: makeMaterialBlend(materials),
     materialConfidence: materials.length > 0 ? 0.4 : 0.1,
-    materialConfidenceLabel: materials.length > 0 ? "low" : "low",
+    materialConfidenceLabel: confidenceLabel(materials),
     softnessScore: 0,
     stretchScore: 0,
     breathabilityScore: 0,
@@ -80,7 +88,7 @@ function mapAmazonProduct(p: any, query: string): ProductResult {
   };
 }
 
-async function searchAmazonProducts(input: ProductSearchInput): Promise<ProductResult[]> {
+async function searchAmazon(input: ProductSearchInput): Promise<ProductResult[]> {
   const env = getServerEnv();
   if (!env.rapidApiKey) return [];
 
@@ -107,13 +115,13 @@ async function searchAmazonProducts(input: ProductSearchInput): Promise<ProductR
     if (!res.ok) return [];
     const json = await res.json();
     const products: unknown[] = json?.data?.products ?? [];
-    return products.slice(0, 12).map((p) => mapAmazonProduct(p, input.query));
+    return products.slice(0, 8).map((p) => mapAmazonProduct(p, input.query));
   } catch {
     return [];
   }
 }
 
-async function getAmazonProductById(id: string): Promise<ProductResult | null> {
+async function getAmazonById(id: string): Promise<ProductResult | null> {
   const env = getServerEnv();
   const asin = id.replace(/^amazon-/, "");
   if (!asin || !env.rapidApiKey) return null;
@@ -135,11 +143,11 @@ async function getAmazonProductById(id: string): Promise<ProductResult | null> {
     if (!p) return null;
 
     const materials = [
-      ...extractMaterialsFromTitle(p.product_title ?? ""),
-      ...extractMaterialsFromTitle(p.product_description ?? ""),
-      ...extractMaterialsFromTitle((p.product_details ?? []).join(" ")),
+      ...extractMaterials(p.product_title ?? ""),
+      ...extractMaterials(p.product_description ?? ""),
+      ...extractMaterials((p.product_details ?? []).join(" ")),
     ];
-    const uniqueMaterials = [...new Set(materials)];
+    const unique = [...new Set(materials)];
 
     return {
       id,
@@ -155,11 +163,11 @@ async function getAmazonProductById(id: string): Promise<ProductResult | null> {
       colors: p.product_variations?.color?.map((c: { value: string }) => c.value) ?? [],
       sizes: p.product_variations?.size?.map((s: { value: string }) => s.value) ?? [],
       description: p.product_description ?? p.product_title ?? "",
-      listedMaterials: uniqueMaterials,
-      inferredMaterials: uniqueMaterials,
-      normalizedMaterials: uniqueMaterials.map((f) => ({ fiber: f, percentage: null })),
-      materialConfidence: uniqueMaterials.length > 0 ? 0.5 : 0.15,
-      materialConfidenceLabel: uniqueMaterials.length > 0 ? "medium" : "low",
+      listedMaterials: unique,
+      inferredMaterials: unique,
+      normalizedMaterials: makeMaterialBlend(unique),
+      materialConfidence: unique.length > 0 ? 0.5 : 0.15,
+      materialConfidenceLabel: unique.length > 0 ? "medium" : "low",
       softnessScore: 0,
       stretchScore: 0,
       breathabilityScore: 0,
@@ -174,28 +182,119 @@ async function getAmazonProductById(id: string): Promise<ProductResult | null> {
   }
 }
 
+/* ── Serper (Google Shopping) provider ── */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSerperProduct(p: any, query: string): ProductResult {
+  const price = parsePrice(p.price);
+  const materials = extractMaterials(p.title ?? "");
+  const id = `serper-${Buffer.from(p.link ?? p.title ?? "").toString("base64").slice(0, 24)}`;
+
+  return {
+    id,
+    title: p.title ?? "Product",
+    brand: p.source ?? inferBrand(p.title ?? ""),
+    retailer: p.source ?? "Online Store",
+    price,
+    currency: "USD",
+    productUrl: p.link ?? "",
+    imageUrl: p.imageUrl ?? p.thumbnailUrl ?? "",
+    category: inferCategory(query),
+    colors: [],
+    sizes: [],
+    description: p.title ?? "",
+    listedMaterials: materials,
+    inferredMaterials: materials,
+    normalizedMaterials: makeMaterialBlend(materials),
+    materialConfidence: materials.length > 0 ? 0.4 : 0.1,
+    materialConfidenceLabel: confidenceLabel(materials),
+    softnessScore: 0,
+    stretchScore: 0,
+    breathabilityScore: 0,
+    opacityScore: 0,
+    durabilityScore: 0,
+    careInstructions: [],
+    reviewSummary: p.rating ? `Rated ${p.rating}/5 (${p.ratingCount ?? "?"} reviews)` : undefined,
+    source: "serper",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]> {
+  const env = getServerEnv();
+  if (!env.serperApiKey) return [];
+
+  const body: Record<string, unknown> = { q: input.query, gl: "us" };
+  if (input.maxPrice) body.tbs = `p_ord:p,price:1,ppr_max:${Math.round(input.maxPrice)}`;
+
+  try {
+    const res = await fetch("https://google.serper.dev/shopping", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": env.serperApiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const products: unknown[] = json?.shopping ?? [];
+    return products.slice(0, 8).map((p) => mapSerperProduct(p, input.query));
+  } catch {
+    return [];
+  }
+}
+
+/* ── Combined provider ── */
+
+async function searchCombined(input: ProductSearchInput): Promise<ProductResult[]> {
+  const [serperResults, amazonResults] = await Promise.all([
+    searchSerper(input),
+    searchAmazon(input),
+  ]);
+
+  // Serper first (broader fashion coverage), Amazon fills remaining slots
+  const seen = new Set<string>();
+  const merged: ProductResult[] = [];
+
+  for (const p of [...serperResults, ...amazonResults]) {
+    if (!seen.has(p.id) && p.price > 0) {
+      seen.add(p.id);
+      merged.push(p);
+    }
+  }
+
+  return merged.slice(0, 16);
+}
+
+async function getByIdCombined(id: string): Promise<ProductResult | null> {
+  if (id.startsWith("amazon-")) return getAmazonById(id);
+  // Serper products can't be re-fetched by ID — return null and let the modal use cached data
+  return null;
+}
+
 /* ── provider factory ── */
 
 export function getProductSearchProvider(): ProductSearchProvider {
   const env = getServerEnv();
 
-  switch (env.shoppingProvider) {
-    case "amazon":
-      return {
-        search: searchAmazonProducts,
-        getById: getAmazonProductById,
-      };
-    case "mock":
-    case "serpapi":
-    case "searchapi":
-    case "retailer":
-    default:
-      return {
-        search: searchMockProducts,
-        getById: async (id) => {
-          const products = await searchMockProducts({ query: "" });
-          return products.find((p) => p.id === id) ?? null;
-        },
-      };
+  if (env.rapidApiKey && env.serperApiKey) {
+    return { search: searchCombined, getById: getByIdCombined };
   }
+  if (env.serperApiKey) {
+    return {
+      search: searchSerper,
+      getById: async () => null,
+    };
+  }
+  if (env.rapidApiKey) {
+    return { search: searchAmazon, getById: getAmazonById };
+  }
+
+  // No keys configured — return empty results
+  return {
+    search: async () => [],
+    getById: async () => null,
+  };
 }

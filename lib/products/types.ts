@@ -78,7 +78,7 @@ export interface ProductResult {
   durabilityScore: number;
   careInstructions: string[];
   reviewSummary?: string;
-  source: "mock" | "serpapi" | "searchapi" | "retailer" | "amazon" | "manual";
+  source: "mock" | "serpapi" | "searchapi" | "serper" | "retailer" | "amazon" | "manual";
   createdAt: string;
 }
 
