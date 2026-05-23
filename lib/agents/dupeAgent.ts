@@ -1,7 +1,7 @@
 import type { DupeComparison, ProductResult } from "@/lib/products/types";
 import { createDupeComparison } from "@/lib/dupes/dupeScore";
 import { detectDupeCategory, type DupeCategory } from "@/lib/dupes/categoryDetect";
-import { getProductSearchProvider } from "@/lib/products/searchProvider";
+import { getProductSearchProvider, searchFragranceCommunityDupes } from "@/lib/products/searchProvider";
 
 interface DupeAgentInput {
   sourceProduct: ProductResult;
@@ -13,7 +13,6 @@ interface DupeAgentInput {
 
 function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
   if (category === "fragrance") {
-    // Keep brand name — it's the key identifier for fragrance dupes
     const cleaned = source.title
       .replace(/\b(eau\s+de\s+(parfum|toilette|cologne)|edt|edp|spray|\d+\s*ml)\b/gi, "")
       .trim();
@@ -36,34 +35,45 @@ function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
 
   if (category === "jewelry") return (keywords || source.title) + " jewelry dupe";
   if (category === "bag") return (keywords || source.title) + " bag dupe alternative";
-  // Fallback to full title so "Miss Dior" doesn't search for "clothing"
   return keywords || source.title;
+}
+
+function isSameBrand(candidateBrand: string, sourceBrand: string, category: DupeCategory): boolean {
+  if (candidateBrand === sourceBrand) return true;
+  // For fragrance, also block prefix matches: "Creed Men's" when source brand is "Creed Aventus"
+  if (category === "fragrance") {
+    const sourceFirstWord = sourceBrand.split(" ")[0];
+    if (sourceFirstWord.length >= 4 && candidateBrand.startsWith(sourceFirstWord)) return true;
+  }
+  return false;
 }
 
 export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons: DupeComparison[]; category: DupeCategory }> {
   const category = detectDupeCategory(input.sourceProduct.title);
-  const provider = getProductSearchProvider();
-  const query = buildDupeQuery(input.sourceProduct, category);
 
-  const candidates = await provider.search({
-    query,
-    maxPrice: input.maxPrice ?? input.sourceProduct.price - 1,
-    preferredMaterials: input.preferredMaterials,
-    avoidMaterials: input.avoidMaterials,
-  });
+  let candidates: ProductResult[];
+  if (category === "fragrance") {
+    // Community-aware search: web search → extract dupe names → shopping lookup
+    candidates = await searchFragranceCommunityDupes(input.sourceProduct.title, input.maxPrice);
+  } else {
+    const provider = getProductSearchProvider();
+    const query = buildDupeQuery(input.sourceProduct, category);
+    candidates = await provider.search({
+      query,
+      maxPrice: input.maxPrice ?? input.sourceProduct.price - 1,
+      preferredMaterials: input.preferredMaterials,
+      avoidMaterials: input.avoidMaterials,
+    });
+  }
 
   const sourceBrand = input.sourceProduct.brand.toLowerCase();
   const sourceRetailer = input.sourceProduct.retailer.toLowerCase();
 
   const comparisons = candidates
-    .filter((candidate) => candidate.id !== input.sourceProduct.id)
-    .filter((candidate) => candidate.price > 0 && candidate.price < input.sourceProduct.price)
-    .filter((candidate) => {
-      const b = candidate.brand.toLowerCase();
-      const r = candidate.retailer.toLowerCase();
-      return b !== sourceBrand && r !== sourceRetailer;
-    })
-    .map((candidate) => createDupeComparison(input.sourceProduct, candidate, category))
+    .filter((c) => c.id !== input.sourceProduct.id)
+    .filter((c) => c.price > 0 && c.price < input.sourceProduct.price)
+    .filter((c) => !isSameBrand(c.brand.toLowerCase(), sourceBrand, category) && c.retailer.toLowerCase() !== sourceRetailer)
+    .map((c) => createDupeComparison(input.sourceProduct, c, category))
     .sort((a, b) => b.score.finalDupeScore - a.score.finalDupeScore)
     .slice(0, input.limit ?? 8);
 

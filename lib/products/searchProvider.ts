@@ -252,6 +252,81 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
   }
 }
 
+/* ── Fragrance community dupe search ── */
+
+async function extractFragranceDupeNames(
+  snippets: Array<{ title?: string; snippet?: string }>,
+  sourceName: string,
+  apiKey: string
+): Promise<string[]> {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic({ apiKey });
+  const context = snippets
+    .slice(0, 8)
+    .map((s) => `${s.title ?? ""}: ${s.snippet ?? ""}`)
+    .join("\n");
+  try {
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      messages: [{
+        role: "user",
+        content: `From these search results about fragrance dupes for "${sourceName}", extract specific product names (brand + fragrance name) recommended as dupes or clones. Return a JSON array of strings, max 4 names. Return [] if none found.\n\n${context}`,
+      }],
+    });
+    const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+    const match = text.match(/\[[\s\S]*?\]/);
+    return match ? (JSON.parse(match[0]) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function searchFragranceCommunityDupes(
+  sourceName: string,
+  maxPrice: number | undefined
+): Promise<ProductResult[]> {
+  const env = getServerEnv();
+  if (!env.serperApiKey) return [];
+
+  // Step 1: Web search to find community-recommended dupe names
+  let dupeNames: string[] = [];
+  try {
+    const webRes = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: `best "${sourceName}" dupe clone alternative fragrance`, gl: "us", num: 8 }),
+    });
+    if (webRes.ok) {
+      const json = await webRes.json();
+      const organic: Array<{ title?: string; snippet?: string }> = json.organic ?? [];
+      if (env.anthropicApiKey && organic.length > 0) {
+        dupeNames = await extractFragranceDupeNames(organic, sourceName, env.anthropicApiKey);
+      }
+    }
+  } catch (err) {
+    console.error("[Fragrance] web search error:", err);
+  }
+
+  // Fallback: direct shopping search for "dupe {sourceName}"
+  if (dupeNames.length === 0) {
+    return searchSerper({ query: `${sourceName} dupe affordable`, maxPrice });
+  }
+
+  // Step 2: Search shopping for each community-recommended dupe
+  const results: ProductResult[] = [];
+  const seen = new Set<string>();
+  for (const name of dupeNames.slice(0, 4)) {
+    try {
+      const hits = await searchSerper({ query: name, maxPrice });
+      for (const h of hits) {
+        if (!seen.has(h.id) && h.price > 0) { seen.add(h.id); results.push(h); }
+      }
+    } catch { /* skip */ }
+  }
+  return results.slice(0, 10);
+}
+
 /* ── Combined provider ── */
 
 async function searchCombined(input: ProductSearchInput): Promise<ProductResult[]> {
