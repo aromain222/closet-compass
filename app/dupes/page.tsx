@@ -199,9 +199,19 @@ function DupesContent() {
     const q = (overrideQuery ?? inputValue).trim();
     if (!q) return;
     if (overrideQuery) setInputValue(overrideQuery);
-    // URL: strip protocol/path to extract search hint
+    // URL: extract product name from path, strip domain/numbers/extensions
     const query = q.startsWith("http")
-      ? q.replace(/^https?:\/\//, "").replace(/\?.*$/, "").replace(/\//g, " ").trim()
+      ? q
+          .replace(/^https?:\/\/[^/]+/, "")   // remove domain
+          .replace(/\?.*$/, "")               // remove query string
+          .replace(/\.[a-z]{2,4}$/, "")       // remove .html etc
+          .replace(/\/\d+\/?$/, "")           // remove trailing numeric IDs
+          .split("/")
+          .pop()!                             // take last path segment (product name)
+          .replace(/-/g, " ")                 // hyphens → spaces
+          .replace(/\b(the|and|for|with|mens|womens|boys|girls|kids)\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim()
       : q;
     setStep("searching");
     setSearchError(null);

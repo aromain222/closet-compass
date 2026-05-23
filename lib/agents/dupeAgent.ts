@@ -32,9 +32,17 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<DupeCompariso
     avoidMaterials: input.avoidMaterials,
   });
 
+  const sourceBrand = input.sourceProduct.brand.toLowerCase();
+  const sourceRetailer = input.sourceProduct.retailer.toLowerCase();
+
   return candidates
     .filter((candidate) => candidate.id !== input.sourceProduct.id)
     .filter((candidate) => candidate.price > 0 && candidate.price < input.sourceProduct.price)
+    .filter((candidate) => {
+      const b = candidate.brand.toLowerCase();
+      const r = candidate.retailer.toLowerCase();
+      return b !== sourceBrand && r !== sourceRetailer;
+    })
     .map((candidate) => createDupeComparison(input.sourceProduct, candidate))
     .sort((a, b) => b.score.finalDupeScore - a.score.finalDupeScore)
     .slice(0, input.limit ?? 8);
