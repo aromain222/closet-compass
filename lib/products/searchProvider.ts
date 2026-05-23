@@ -1,4 +1,5 @@
 import type { ProductResult, ProductSearchInput } from "@/lib/products/types";
+import { enrichProducts } from "@/lib/materials/enrichMaterials";
 import { getServerEnv } from "@/lib/utils/env";
 
 export interface ProductSearchProvider {
@@ -274,27 +275,43 @@ async function getByIdCombined(id: string): Promise<ProductResult | null> {
   return null;
 }
 
+/* ── Claude enrichment wrapper ── */
+
+function withEnrichment(
+  searchFn: (input: ProductSearchInput) => Promise<ProductResult[]>,
+  anthropicApiKey: string
+): (input: ProductSearchInput) => Promise<ProductResult[]> {
+  return async (input) => {
+    const products = await searchFn(input);
+    if (products.length === 0) return products;
+    return enrichProducts(products, anthropicApiKey);
+  };
+}
+
 /* ── provider factory ── */
 
 export function getProductSearchProvider(): ProductSearchProvider {
   const env = getServerEnv();
 
+  let searchFn: (input: ProductSearchInput) => Promise<ProductResult[]>;
+  let getById: (id: string) => Promise<ProductResult | null>;
+
   if (env.rapidApiKey && env.serperApiKey) {
-    return { search: searchCombined, getById: getByIdCombined };
-  }
-  if (env.serperApiKey) {
-    return {
-      search: searchSerper,
-      getById: async () => null,
-    };
-  }
-  if (env.rapidApiKey) {
-    return { search: searchAmazon, getById: getAmazonById };
+    searchFn = searchCombined;
+    getById = getByIdCombined;
+  } else if (env.serperApiKey) {
+    searchFn = searchSerper;
+    getById = async () => null;
+  } else if (env.rapidApiKey) {
+    searchFn = searchAmazon;
+    getById = getAmazonById;
+  } else {
+    return { search: async () => [], getById: async () => null };
   }
 
-  // No keys configured — return empty results
-  return {
-    search: async () => [],
-    getById: async () => null,
-  };
+  if (env.anthropicApiKey) {
+    searchFn = withEnrichment(searchFn, env.anthropicApiKey);
+  }
+
+  return { search: searchFn, getById };
 }

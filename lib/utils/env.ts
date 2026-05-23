@@ -5,6 +5,7 @@ export interface ServerEnv {
   supabaseServiceRoleKey?: string;
   rapidApiKey?: string;
   serperApiKey?: string;
+  anthropicApiKey?: string;
   plaidClientId?: string;
   plaidSecret?: string;
   plaidEnv: "sandbox" | "development" | "production";
@@ -25,6 +26,7 @@ export function getServerEnv(): ServerEnv {
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     rapidApiKey: process.env.RAPIDAPI_KEY,
     serperApiKey: process.env.SERPER_API_KEY,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     plaidClientId: process.env.PLAID_CLIENT_ID,
     plaidSecret: process.env.PLAID_SECRET,
     plaidEnv:
