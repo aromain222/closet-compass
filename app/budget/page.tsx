@@ -141,21 +141,21 @@ export default function BudgetPage() {
     );
   }
 
-  /* ── Not connected — show Plaid prompt ── */
-  if (isMock || !summary) {
-    return (
-      <div className="min-h-screen bg-cream px-4 max-w-2xl mx-auto">
-        <PlaidConnectPrompt onConnect={() => router.push("/settings")} />
-      </div>
-    );
-  }
-
-  /* ── Connected — show full dashboard ── */
-  const dashboardData = buildDashboardData(summary, transactions);
+  /* ── Always show dashboard; use mock data when not connected ── */
+  const dashboardData = summary && !isMock
+    ? buildDashboardData(summary, transactions)
+    : MOCK_DASHBOARD_DATA;
 
   return (
     <div className="min-h-screen bg-cream px-4 py-8 max-w-2xl mx-auto">
-      <MoneyDashboard data={dashboardData} onRefresh={load} />
+      <MoneyDashboard data={dashboardData} onRefresh={load} isMockPreview={isMock || !summary} />
+
+      {/* Connect prompt sits below the dashboard when not connected */}
+      {(isMock || !summary) && (
+        <div className="mt-6">
+          <PlaidConnectPrompt onConnect={() => router.push("/settings")} />
+        </div>
+      )}
 
       {/* Recommendations below the dashboard */}
       {recommendations.length > 0 && (
