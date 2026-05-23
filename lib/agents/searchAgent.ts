@@ -13,7 +13,7 @@ export async function runSearchAgent(input: ProductSearchInput): Promise<Product
     agentSummary:
       products.length > 0
         ? `Found ${products.length} product${products.length === 1 ? "" : "s"} with material data prioritized for softness, stretch, breathability, opacity, and care.`
-        : "No matching products found in the current mock catalog.",
+        : "No matching products found — try a broader search term.",
     materialNotes,
     filtersApplied: {
       maxPrice: input.maxPrice ?? null,

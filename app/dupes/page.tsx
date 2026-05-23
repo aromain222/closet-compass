@@ -7,6 +7,7 @@ import { Shuffle, Search as SearchIcon, Link2, Heart, ExternalLink } from "lucid
 import { DupeCard } from "@/components/product/DupeCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DupeComparisonModal } from "@/components/product/DupeComparisonModal";
+import { ProductModal } from "@/components/product/ProductModal";
 import { SearchResultsSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,11 @@ type IdleTab = "search" | "wishlist";
 function SourceHeader({
   product,
   onReset,
+  onViewDetails,
 }: {
   product: ProductResult;
   onReset: () => void;
+  onViewDetails?: () => void;
 }) {
   const fibers =
     product.normalizedMaterials.length > 0
@@ -36,8 +39,12 @@ function SourceHeader({
 
   return (
     <div className="bg-petal rounded-2xl border border-soft p-4 flex gap-4 items-start">
-      {product.imageUrl && (
-        <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-card shrink-0">
+      <button
+        className="relative w-16 h-20 rounded-xl overflow-hidden bg-card shrink-0 hover:opacity-80 transition-opacity"
+        onClick={onViewDetails}
+        aria-label="View product details"
+      >
+        {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.title}
@@ -46,14 +53,19 @@ function SourceHeader({
             className="object-cover"
             unoptimized
           />
-        </div>
-      )}
+        )}
+      </button>
       <div className="flex-1 min-w-0 space-y-2">
         <div>
           <p className="text-[11px] text-muted uppercase tracking-[0.12em] font-medium">
             Finding dupes for
           </p>
-          <p className="text-sm font-medium text-warm-dark leading-snug">{product.title}</p>
+          <button
+            className="text-left hover:underline decoration-muted/40"
+            onClick={onViewDetails}
+          >
+            <p className="text-sm font-medium text-warm-dark leading-snug">{product.title}</p>
+          </button>
           <p className="text-xs text-muted">
             {product.brand} · ${product.price}
           </p>
@@ -71,12 +83,22 @@ function SourceHeader({
           </div>
         )}
       </div>
-      <button
-        className="text-xs text-muted hover:text-warm-dark transition-colors shrink-0"
-        onClick={onReset}
-      >
-        New search
-      </button>
+      <div className="flex flex-col items-end gap-2 shrink-0">
+        {onViewDetails && (
+          <button
+            className="text-xs text-mauve-dark font-medium hover:text-warm-dark transition-colors"
+            onClick={onViewDetails}
+          >
+            View stats
+          </button>
+        )}
+        <button
+          className="text-xs text-muted hover:text-warm-dark transition-colors"
+          onClick={onReset}
+        >
+          New search
+        </button>
+      </div>
     </div>
   );
 }
@@ -192,6 +214,7 @@ function DupesContent() {
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<DupeComparison | null>(null);
+  const [sourceSelected, setSourceSelected] = useState<ProductResult | null>(null);
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set());
 
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
@@ -465,19 +488,33 @@ function DupesContent() {
       {/* ── Dupe results ── */}
       {step === "dupes" && sourceProduct && (
         <div className="space-y-6">
-          <SourceHeader product={sourceProduct} onReset={reset} />
+          <SourceHeader
+            product={sourceProduct}
+            onReset={reset}
+            onViewDetails={() => setSourceSelected(sourceProduct)}
+          />
 
           {agentSummary && (
             <p className="text-xs text-muted italic border-l-2 border-blush/40 pl-3">{agentSummary}</p>
           )}
 
           {dupes.length === 0 ? (
-            <EmptyState
-              icon={SearchIcon}
-              title="No dupes found"
-              description="Try raising the max price or search for a different item."
-              action={{ label: "Search again", onClick: reset }}
-            />
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-card border border-soft p-6 text-center space-y-3">
+                <p className="text-sm font-medium text-warm-dark">No cheaper alternatives found</p>
+                <p className="text-xs text-muted">
+                  This might already be a budget-friendly option, or try raising the max price.
+                </p>
+                <div className="flex justify-center gap-2 flex-wrap pt-1">
+                  <Button variant="secondary" size="sm" onClick={() => setSourceSelected(sourceProduct)}>
+                    View product stats
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={reset}>
+                    Search again
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               <p className="text-xs text-muted uppercase tracking-wider font-medium">
@@ -502,6 +539,14 @@ function DupesContent() {
         onClose={() => setSelected(null)}
         onWishlist={(c) => handleWishlist(c.alternativeProduct)}
         wishlisted={selected ? wishlisted.has(selected.alternativeProduct.id) : false}
+      />
+
+      <ProductModal
+        product={sourceSelected}
+        onClose={() => setSourceSelected(null)}
+        onWishlist={(p) => handleWishlist(p)}
+        wishlisted={sourceSelected ? wishlisted.has(sourceSelected.id) : false}
+        userId={userId}
       />
     </div>
   );

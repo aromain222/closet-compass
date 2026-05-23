@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       agentSummary:
         typedComparisons.length > 0
           ? `Ranked ${typedComparisons.length} cheaper alternative${typedComparisons.length === 1 ? "" : "s"} with material match weighted most heavily.`
-          : "No cheaper alternatives found in the current mock catalog."
+          : "No cheaper alternatives found — this may already be a budget-friendly pick."
     });
   } catch (error) {
     return jsonError(error);
