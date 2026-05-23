@@ -121,6 +121,55 @@ function WishlistRow({
 }
 
 /* ──────────────────────────────────────────── */
+/*  URL → search query extraction              */
+/* ──────────────────────────────────────────── */
+
+function extractProductName(url: string): string {
+  const path = url.replace(/^https?:\/\/[^/]+/, "").replace(/\?.*$/, "").replace(/#.*$/, "");
+
+  // Amazon: meaningful title lives before /dp/
+  const amazonMatch = path.match(/\/([A-Za-z][\w-]{8,})\/dp\//);
+  if (amazonMatch) {
+    return amazonMatch[1]
+      .replace(/-/g, " ")
+      .replace(/\b(the|and|for|with|mens|womens|boys|girls|kids)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // General: pick the longest meaningful hyphenated path segment
+  const stopwords = /\b(the|and|for|with|from|mens|womens|boys|girls|kids|shop|sale|new|view|item|product|detail|page|default|index|pdp|plp|us|en)\b/gi;
+  const segments = path
+    .split("/")
+    .map((s) => s.replace(/\.[a-z]{2,4}$/, "")) // strip extensions
+    .filter((s) => {
+      if (s.length < 5) return false;
+      if (/^\d+$/.test(s)) return false;                   // pure numeric ID
+      if (/^[0-9a-f]{8,}$/i.test(s)) return false;         // hex ID
+      if (/^[A-Z]{1,4}\d{4,}/i.test(s)) return false;      // product codes like B08X1Y
+      if (/^prod\d+/i.test(s)) return false;                // prod11720664
+      if (/^p\d{5,}/i.test(s)) return false;                // p09843215
+      return true;
+    });
+
+  const best = segments
+    .map((s) => s
+      .replace(/-([a-z]{0,3})?\d{5,}$/i, "")               // strip trailing ID fragments
+      .replace(/[-_](size|colour|color|[smlx]+\d*|[0-9]+[a-z]{0,2})$/i, "") // strip size/color suffixes
+    )
+    .filter((s) => s.includes("-") && s.length > 6)
+    .sort((a, b) => b.length - a.length)[0]
+    ?? segments[segments.length - 1]
+    ?? "";
+
+  return best
+    .replace(/-/g, " ")
+    .replace(stopwords, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* ──────────────────────────────────────────── */
 /*  Main content                               */
 /* ──────────────────────────────────────────── */
 
@@ -199,28 +248,7 @@ function DupesContent() {
     const q = (overrideQuery ?? inputValue).trim();
     if (!q) return;
     if (overrideQuery) setInputValue(overrideQuery);
-    // URL: find the most product-name-like path segment
-    const query = q.startsWith("http")
-      ? (() => {
-          const path = q.replace(/^https?:\/\/[^/]+/, "").replace(/\?.*$/, "");
-          const segments = path.split("/").filter((s) =>
-            s.length > 3 &&                        // skip short segments like "p", "_"
-            !/^\d+$/.test(s) &&                    // skip pure numbers
-            !/^[a-z]{1,4}\d{4,}/i.test(s)          // skip product codes like "prod11720664"
-          );
-          // Prefer the longest hyphenated segment (most likely to be the product name)
-          const best = segments
-            .filter((s) => s.includes("-"))
-            .sort((a, b) => b.length - a.length)[0]
-            ?? segments[segments.length - 1]
-            ?? "";
-          return best
-            .replace(/-/g, " ")
-            .replace(/\b(the|and|for|with|mens|womens|boys|girls|kids|nmd|md|sm|lg|xl|xs|xd)\b/gi, "")
-            .replace(/\s+/g, " ")
-            .trim();
-        })()
-      : q;
+    const query = q.startsWith("http") ? extractProductName(q) : q;
     setStep("searching");
     setSearchError(null);
     setError(null);
