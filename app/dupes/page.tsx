@@ -324,7 +324,7 @@ function DupesContent() {
       <div className="mb-8">
         <h1 className="font-display text-3xl font-light text-warm-dark mb-1">Find a dupe</h1>
         <p className="text-sm text-muted max-w-sm text-balance">
-          Cheaper alternatives ranked by material quality — not just looks. We&rsquo;ll be honest when the original is worth it.
+          Clothing, jewelry, bags, and fragrance — ranked by what actually matters for each category.
         </p>
       </div>
 
@@ -359,7 +359,7 @@ function DupesContent() {
                   <Link2 size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
                   <input
                     type="text"
-                    placeholder='e.g. "silk slip midi skirt" — or paste a product URL'
+                    placeholder='e.g. "Chanel Chance perfume dupe" or "silk slip skirt"'
                     value={inputValue}
                     onChange={(e) => { setInputValue(e.target.value); setSearchError(null); }}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
@@ -374,7 +374,7 @@ function DupesContent() {
 
                 {/* Quick examples */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {["silk slip skirt", "cashmere cardigan", "linen trousers", "lyocell wrap dress"].map((ex) => (
+                  {["silk slip skirt", "Chanel Chance perfume", "gold chain necklace", "Celine bag dupe", "cashmere cardigan"].map((ex) => (
                     <button
                       key={ex}
                       className="text-xs text-warm-mid bg-petal border border-soft rounded-full px-3 py-1 hover:border-mauve hover:text-warm-dark transition-colors"
@@ -429,8 +429,7 @@ function DupesContent() {
                 <EmptyState
                   icon={Heart}
                   title="Nothing saved yet"
-                  description="Save items from search results, then come back to find dupes."
-                  action={{ label: "Browse products", onClick: () => router.push("/search") }}
+                  description="Search for an item above, save it to your wishlist, then come back to find dupes."
                 />
               ) : (
                 <div className="space-y-2">

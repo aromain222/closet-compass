@@ -5,6 +5,7 @@ import type {
   ProductResult
 } from "@/lib/products/types";
 import { scoreMaterialQuality, scoreMaterialSimilarity } from "@/lib/materials/materialScore";
+import type { DupeCategory } from "./categoryDetect";
 
 function scoreVisualPlaceholder(source: ProductResult, candidate: ProductResult): number {
   const categoryMatch = source.category === candidate.category ? 45 : 20;
@@ -49,38 +50,50 @@ export function generateDupeLabel(input: {
   sourceDurability: number;
   candidateReviewQuality: number;
   candidateMaterialConfidenceLabel: "high" | "medium" | "low";
+  category?: DupeCategory;
 }): DupeRecommendationLabel {
-  const materialQualityGap = input.sourceMaterialQuality - input.candidateMaterialQuality;
-  const durabilityGap = input.sourceDurability - input.candidateDurability;
+  const category = input.category ?? "clothing";
 
-  // Only hard-avoid when we have enough material data to know it's bad
-  const hasMaterialData = input.materialSimilarity > 0 || input.sourceMaterialQuality > 0;
-
-  if (hasMaterialData) {
-    if (materialQualityGap >= 18 || durabilityGap >= 18) {
-      return "worth_the_splurge";
-    }
-    if (input.materialSimilarity < 50 && materialQualityGap >= 14) {
-      return "avoid";
-    }
-    if (input.materialSimilarity >= 78 && input.priceSavings >= 25 && input.candidateReviewQuality >= 65) {
-      return "strong_dupe";
-    }
-  }
-
-  // No material data — score on price savings and visual similarity
-  if (input.priceSavings >= 40 && input.visualSimilarity >= 50) {
-    return "strong_dupe";
-  }
-  if (input.priceSavings >= 20) {
+  if (category === "fragrance") {
+    if (input.priceSavings >= 40) return "strong_dupe";
+    if (input.priceSavings >= 20) return "consider";
     return "consider";
   }
 
+  if (category === "jewelry") {
+    if (input.priceSavings >= 35 && input.visualSimilarity >= 40) return "strong_dupe";
+    if (input.priceSavings >= 15) return "consider";
+    return "consider";
+  }
+
+  if (category === "bag") {
+    const materialQualityGap = input.sourceMaterialQuality - input.candidateMaterialQuality;
+    if (materialQualityGap >= 20) return "worth_the_splurge";
+    if (input.priceSavings >= 30 && input.visualSimilarity >= 40) return "strong_dupe";
+    if (input.priceSavings >= 15) return "consider";
+    return "consider";
+  }
+
+  // clothing: material-weighted logic
+  const materialQualityGap = input.sourceMaterialQuality - input.candidateMaterialQuality;
+  const durabilityGap = input.sourceDurability - input.candidateDurability;
+  const hasMaterialData = input.materialSimilarity > 0 || input.sourceMaterialQuality > 0;
+
+  if (hasMaterialData) {
+    if (materialQualityGap >= 18 || durabilityGap >= 18) return "worth_the_splurge";
+    if (input.materialSimilarity < 50 && materialQualityGap >= 14) return "avoid";
+    if (input.materialSimilarity >= 78 && input.priceSavings >= 25 && input.candidateReviewQuality >= 65) return "strong_dupe";
+  }
+
+  if (input.priceSavings >= 40 && input.visualSimilarity >= 50) return "strong_dupe";
+  if (input.priceSavings >= 20) return "consider";
   return "consider";
 }
 
-function buildRisks(source: ProductResult, candidate: ProductResult, materialSimilarity: number): string[] {
-  return [
+function buildRisks(source: ProductResult, candidate: ProductResult, materialSimilarity: number, category?: DupeCategory): string[] {
+  if (category === "fragrance" || category === "jewelry") return [];
+
+  const all = [
     candidate.opacityScore + 12 < source.opacityScore
       ? `Opacity risk: ${candidate.opacityScore}/100 versus ${source.opacityScore}/100 on the source item.`
       : null,
@@ -93,10 +106,16 @@ function buildRisks(source: ProductResult, candidate: ProductResult, materialSim
     materialSimilarity < 60
       ? `Material risk: blend shifts from ${describeBlend(source)} to ${describeBlend(candidate)}.`
       : null,
-    candidate.materialConfidenceLabel !== "high"
+    category !== "bag" && candidate.materialConfidenceLabel !== "high"
       ? `Confidence risk: candidate material confidence is ${candidate.materialConfidenceLabel}.`
-      : null
+      : null,
   ].filter((risk): risk is string => Boolean(risk));
+
+  // For bags, only durability and material risks are relevant
+  if (category === "bag") {
+    return all.filter((r) => r.startsWith("Durability") || r.startsWith("Material"));
+  }
+  return all;
 }
 
 export function generateDupeExplanation(input: {
@@ -108,8 +127,21 @@ export function generateDupeExplanation(input: {
   recommendation: DupeRecommendationLabel;
   materialExplanation: string;
   risks: string[];
+  category?: DupeCategory;
 }): string {
   const { sourceProduct, alternativeProduct, recommendation } = input;
+  const category = input.category ?? "clothing";
+
+  if (category === "fragrance") {
+    const review = alternativeProduct.reviewSummary ? ` ${alternativeProduct.reviewSummary}.` : "";
+    return `${alternativeProduct.title} is an affordable fragrance alternative that saves ${input.priceSavings}% vs. ${sourceProduct.title}.${review}`;
+  }
+
+  if (category === "jewelry") {
+    const review = alternativeProduct.reviewSummary ? ` Reviews: ${alternativeProduct.reviewSummary}.` : "";
+    return `Similar style, ${input.priceSavings}% cheaper — sourced from ${alternativeProduct.retailer}.${review}`;
+  }
+
   const intro =
     recommendation === "strong_dupe"
       ? "This is a strong dupe"
@@ -118,6 +150,12 @@ export function generateDupeExplanation(input: {
         : recommendation === "avoid"
           ? "Avoid treating this as a true dupe"
           : "This is a conditional dupe";
+
+  if (category === "bag") {
+    const review = alternativeProduct.reviewSummary ? `Reviews: ${alternativeProduct.reviewSummary}` : "";
+    const riskText = input.risks.length > 0 ? `Main risk: ${input.risks[0]}` : "No major material penalties identified.";
+    return `${intro} for ${sourceProduct.title}: ${alternativeProduct.title} saves ${input.priceSavings}%. ${input.materialExplanation} ${review} ${riskText}`.trim();
+  }
 
   const reviewText = alternativeProduct.reviewSummary
     ? `Reviews: ${alternativeProduct.reviewSummary}`
@@ -130,9 +168,18 @@ export function generateDupeExplanation(input: {
   return `${intro} for ${sourceProduct.title}: ${alternativeProduct.title} saves ${input.priceSavings}% and has a ${input.materialSimilarity}/100 material match. ${input.materialExplanation} Fit similarity is ${input.fitSimilarity}/100 based on category and size overlap. ${reviewText} ${riskText}`;
 }
 
+const CATEGORY_WEIGHTS: Record<DupeCategory, [number, number, number, number, number, number]> = {
+  //                    material  visual  fit   price review confidence
+  clothing: [0.55,    0.10,   0.10, 0.15, 0.05, 0.05],
+  jewelry:  [0.00,    0.55,   0.00, 0.35, 0.05, 0.05],
+  bag:      [0.25,    0.30,   0.05, 0.30, 0.05, 0.05],
+  fragrance:[0.00,    0.00,   0.00, 0.65, 0.25, 0.10],
+};
+
 export function calculateDupeScore(
   sourceProduct: ProductResult,
-  alternativeProduct: ProductResult
+  alternativeProduct: ProductResult,
+  category: DupeCategory = "clothing"
 ): DupeScoreBreakdown {
   const material = scoreMaterialSimilarity(sourceProduct, alternativeProduct);
   const visualSimilarity = scoreVisualPlaceholder(sourceProduct, alternativeProduct);
@@ -153,17 +200,19 @@ export function calculateDupeScore(
     candidateDurability: alternativeProduct.durabilityScore,
     sourceDurability: sourceProduct.durabilityScore,
     candidateReviewQuality: brandReviewQuality,
-    candidateMaterialConfidenceLabel: alternativeProduct.materialConfidenceLabel
+    candidateMaterialConfidenceLabel: alternativeProduct.materialConfidenceLabel,
+    category,
   });
-  const risks = buildRisks(sourceProduct, alternativeProduct, material.score);
+  const risks = buildRisks(sourceProduct, alternativeProduct, material.score, category);
 
+  const [wMat, wVis, wFit, wPrice, wReview, wConf] = CATEGORY_WEIGHTS[category];
   const finalDupeScore = Math.round(
-    material.score * 0.55 +
-      visualSimilarity * 0.1 +
-      fitSimilarity * 0.1 +
-      priceSavings * 0.15 +
-      brandReviewQuality * 0.05 +
-      confidence * 0.05
+    material.score * wMat +
+      visualSimilarity * wVis +
+      fitSimilarity * wFit +
+      priceSavings * wPrice +
+      brandReviewQuality * wReview +
+      confidence * wConf
   );
   const explanation = generateDupeExplanation({
     sourceProduct,
@@ -173,7 +222,8 @@ export function calculateDupeScore(
     priceSavings,
     recommendation,
     materialExplanation: material.explanation,
-    risks
+    risks,
+    category,
   });
 
   return {
@@ -193,12 +243,13 @@ export function calculateDupeScore(
 
 export function createDupeComparison(
   sourceProduct: ProductResult,
-  alternativeProduct: ProductResult
+  alternativeProduct: ProductResult,
+  category: DupeCategory = "clothing"
 ): DupeComparison {
   return {
     sourceProduct,
     alternativeProduct,
-    score: calculateDupeScore(sourceProduct, alternativeProduct),
+    score: calculateDupeScore(sourceProduct, alternativeProduct, category),
     createdAt: new Date().toISOString()
   };
 }

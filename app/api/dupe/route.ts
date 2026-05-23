@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       throw new ApiError(404, "product_not_found", "Could not find the source product.");
     }
 
-    const comparisons = await runDupeAgent({
+    const { comparisons, category } = await runDupeAgent({
       sourceProduct,
       maxPrice: input.maxPrice,
       preferredMaterials: input.preferredMaterials,
@@ -41,13 +41,26 @@ export async function POST(request: Request) {
       );
     }
 
+    const n = typedComparisons.length;
+    const summaryByCategory: Record<string, string> = {
+      fragrance: n > 0
+        ? `Found ${n} cheaper fragrance alternative${n === 1 ? "" : "s"} — ranked by price savings.`
+        : "No cheaper fragrance alternatives found. Try a different budget range.",
+      jewelry: n > 0
+        ? `Found ${n} style-matched alternative${n === 1 ? "" : "s"} — ranked by visual similarity and savings. Material not factored.`
+        : "No cheaper alternatives found — try a different style or budget.",
+      bag: n > 0
+        ? `Found ${n} bag alternative${n === 1 ? "" : "s"} — ranked by style match and material quality.`
+        : "No cheaper bag alternatives found. Try adjusting the max price.",
+      clothing: n > 0
+        ? `Ranked ${n} cheaper alternative${n === 1 ? "" : "s"} with material match weighted most heavily.`
+        : "No cheaper alternatives found — this may already be a budget-friendly pick.",
+    };
+
     return NextResponse.json({
       sourceProduct,
       alternatives: typedComparisons,
-      agentSummary:
-        typedComparisons.length > 0
-          ? `Ranked ${typedComparisons.length} cheaper alternative${typedComparisons.length === 1 ? "" : "s"} with material match weighted most heavily.`
-          : "No cheaper alternatives found — this may already be a budget-friendly pick."
+      agentSummary: summaryByCategory[category] ?? summaryByCategory.clothing,
     });
   } catch (error) {
     return jsonError(error);

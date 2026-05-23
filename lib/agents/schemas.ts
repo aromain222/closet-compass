@@ -41,7 +41,7 @@ export const ProductResultSchema = z.object({
   durabilityScore: z.number().min(0).max(100),
   careInstructions: z.array(z.string()),
   reviewSummary: z.string().optional(),
-  source: z.enum(["mock", "serpapi", "searchapi", "retailer", "amazon", "manual"]),
+  source: z.enum(["mock", "serpapi", "searchapi", "serper", "retailer", "amazon", "manual"]),
   createdAt: z.string()
 });
 
