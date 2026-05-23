@@ -53,28 +53,27 @@ export function generateDupeLabel(input: {
   const materialQualityGap = input.sourceMaterialQuality - input.candidateMaterialQuality;
   const durabilityGap = input.sourceDurability - input.candidateDurability;
 
-  if (input.candidateMaterialConfidenceLabel === "low") {
-    return "avoid";
+  // Only hard-avoid when we have enough material data to know it's bad
+  const hasMaterialData = input.materialSimilarity > 0 || input.sourceMaterialQuality > 0;
+
+  if (hasMaterialData) {
+    if (materialQualityGap >= 18 || durabilityGap >= 18) {
+      return "worth_the_splurge";
+    }
+    if (input.materialSimilarity < 50 && materialQualityGap >= 14) {
+      return "avoid";
+    }
+    if (input.materialSimilarity >= 78 && input.priceSavings >= 25 && input.candidateReviewQuality >= 65) {
+      return "strong_dupe";
+    }
   }
 
-  if (input.visualSimilarity >= 70 && input.materialSimilarity < 25 && materialQualityGap < 18) {
-    return "avoid";
-  }
-
-  if (
-    materialQualityGap >= 18 ||
-    durabilityGap >= 18 ||
-    (input.materialSimilarity < 55 && input.priceSavings < 45)
-  ) {
-    return "worth_the_splurge";
-  }
-
-  if (input.materialSimilarity < 50 || materialQualityGap >= 14) {
-    return "avoid";
-  }
-
-  if (input.materialSimilarity >= 78 && input.priceSavings >= 25 && input.candidateReviewQuality >= 65) {
+  // No material data — score on price savings and visual similarity
+  if (input.priceSavings >= 40 && input.visualSimilarity >= 50) {
     return "strong_dupe";
+  }
+  if (input.priceSavings >= 20) {
+    return "consider";
   }
 
   return "consider";
@@ -126,7 +125,7 @@ export function generateDupeExplanation(input: {
   const riskText =
     input.risks.length > 0
       ? `Main risk: ${input.risks[0]}`
-      : "Main risk: no major material penalty surfaced in the mock data.";
+      : "No major material penalties identified.";
 
   return `${intro} for ${sourceProduct.title}: ${alternativeProduct.title} saves ${input.priceSavings}% and has a ${input.materialSimilarity}/100 material match. ${input.materialExplanation} Fit similarity is ${input.fitSimilarity}/100 based on category and size overlap. ${reviewText} ${riskText}`;
 }
