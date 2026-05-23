@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Link2, CreditCard, User, ChevronRight, CheckCircle } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Link2, CreditCard, User, ChevronRight, CheckCircle, AlertCircle } from "lucide-react";
+import { usePlaidLink } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -53,28 +54,52 @@ export default function SettingsPage() {
 
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [plaidLoading, setPlaidLoading] = useState(false);
+  const [plaidError, setPlaidError] = useState<string | null>(null);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [budgetInput, setBudgetInput] = useState("400");
   const [budgetSaved, setBudgetSaved] = useState(false);
 
+  const onPlaidSuccess = useCallback(async (publicToken: string) => {
+    try {
+      await api.exchangePlaidToken(userId, publicToken);
+      setPlaidConnected(true);
+      setLinkToken(null);
+    } catch {
+      setPlaidError("Bank connected but token exchange failed. Try again.");
+    }
+  }, [userId]);
+
+  const { open: openPlaidLink, ready: plaidReady } = usePlaidLink({
+    token: linkToken,
+    onSuccess: onPlaidSuccess,
+    onExit: () => { setPlaidLoading(false); setLinkToken(null); },
+  });
+
   async function handlePlaidConnect() {
     setPlaidLoading(true);
+    setPlaidError(null);
     try {
       const res = await api.createPlaidLinkToken(userId);
       if (res.mode === "mock") {
+        // No real Plaid credentials — simulate connection
         await new Promise((r) => setTimeout(r, 800));
         setPlaidConnected(true);
+        setPlaidLoading(false);
       } else {
-        // Real Plaid Link integration would open here using linkToken
-        console.log("Plaid link token:", res.linkToken);
-        setPlaidConnected(true);
+        setLinkToken(res.linkToken);
+        // plaidReady will become true once token is set, then open
       }
     } catch {
-      // show error
-    } finally {
+      setPlaidError("Could not start bank connection. Check your Plaid credentials.");
       setPlaidLoading(false);
     }
   }
+
+  // Open Plaid Link as soon as the token is ready
+  useEffect(() => {
+    if (plaidReady && linkToken) openPlaidLink();
+  }, [plaidReady, linkToken, openPlaidLink]);
 
   async function handleStripeCheckout() {
     setStripeLoading(true);
@@ -158,7 +183,12 @@ export default function SettingsPage() {
               )
             }
           />
-          {!plaidConnected && (
+          {plaidError && (
+            <p className="text-xs text-red-400 pl-1 flex items-center gap-1">
+              <AlertCircle size={11} /> {plaidError}
+            </p>
+          )}
+          {!plaidConnected && !plaidError && (
             <p className="text-xs text-muted pl-1">
               Material Muse reads transactions read-only to calculate your shopping spend. Credentials are never stored.
             </p>

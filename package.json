@@ -14,6 +14,7 @@
     "plaid": "^42.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-plaid-link": "^4.1.1",
     "server-only": "^0.0.1",
     "stripe": "^22.1.1",
     "zod": "^3.23.8"
