@@ -199,19 +199,27 @@ function DupesContent() {
     const q = (overrideQuery ?? inputValue).trim();
     if (!q) return;
     if (overrideQuery) setInputValue(overrideQuery);
-    // URL: extract product name from path, strip domain/numbers/extensions
+    // URL: find the most product-name-like path segment
     const query = q.startsWith("http")
-      ? q
-          .replace(/^https?:\/\/[^/]+/, "")   // remove domain
-          .replace(/\?.*$/, "")               // remove query string
-          .replace(/\.[a-z]{2,4}$/, "")       // remove .html etc
-          .replace(/\/\d+\/?$/, "")           // remove trailing numeric IDs
-          .split("/")
-          .pop()!                             // take last path segment (product name)
-          .replace(/-/g, " ")                 // hyphens → spaces
-          .replace(/\b(the|and|for|with|mens|womens|boys|girls|kids)\b/gi, "")
-          .replace(/\s+/g, " ")
-          .trim()
+      ? (() => {
+          const path = q.replace(/^https?:\/\/[^/]+/, "").replace(/\?.*$/, "");
+          const segments = path.split("/").filter((s) =>
+            s.length > 3 &&                        // skip short segments like "p", "_"
+            !/^\d+$/.test(s) &&                    // skip pure numbers
+            !/^[a-z]{1,4}\d{4,}/i.test(s)          // skip product codes like "prod11720664"
+          );
+          // Prefer the longest hyphenated segment (most likely to be the product name)
+          const best = segments
+            .filter((s) => s.includes("-"))
+            .sort((a, b) => b.length - a.length)[0]
+            ?? segments[segments.length - 1]
+            ?? "";
+          return best
+            .replace(/-/g, " ")
+            .replace(/\b(the|and|for|with|mens|womens|boys|girls|kids|nmd|md|sm|lg|xl|xs|xd)\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+        })()
       : q;
     setStep("searching");
     setSearchError(null);
