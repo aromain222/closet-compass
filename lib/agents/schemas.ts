@@ -113,7 +113,8 @@ export const DupeRequestSchema = z
     maxPrice: z.number().positive().optional(),
     preferredMaterials: z.array(z.string().trim().min(1)).optional(),
     avoidMaterials: z.array(z.string().trim().min(1)).optional(),
-    limit: z.number().int().min(1).max(20).default(8)
+    limit: z.number().int().min(1).max(20).default(8),
+    preferMiddleEasternFragrance: z.boolean().optional(),
   })
   .refine((value) => value.productId || value.sourceProduct, {
     message: "Provide productId or sourceProduct."

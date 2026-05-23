@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       maxPrice: input.maxPrice,
       preferredMaterials: input.preferredMaterials,
       avoidMaterials: input.avoidMaterials,
-      limit: input.limit
+      limit: input.limit,
+      preferMiddleEasternFragrance: input.preferMiddleEasternFragrance,
     });
     const typedComparisons = DupeComparisonSchema.array().parse(comparisons);
 

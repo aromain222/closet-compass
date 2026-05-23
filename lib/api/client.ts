@@ -60,6 +60,7 @@ export interface DupeRequest {
   preferredMaterials?: string[];
   avoidMaterials?: string[];
   limit?: number;
+  preferMiddleEasternFragrance?: boolean;
 }
 
 export interface DupeResponse {

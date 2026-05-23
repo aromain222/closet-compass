@@ -9,6 +9,7 @@ interface DupeAgentInput {
   preferredMaterials?: string[];
   avoidMaterials?: string[];
   limit?: number;
+  preferMiddleEasternFragrance?: boolean;
 }
 
 function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
@@ -54,7 +55,7 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
   let candidates: ProductResult[];
   if (category === "fragrance") {
     // Community-aware search: web search → extract dupe names → shopping lookup
-    candidates = await searchFragranceCommunityDupes(input.sourceProduct.title, input.maxPrice);
+    candidates = await searchFragranceCommunityDupes(input.sourceProduct.title, input.maxPrice, input.preferMiddleEasternFragrance);
   } else {
     const provider = getProductSearchProvider();
     const query = buildDupeQuery(input.sourceProduct, category);
