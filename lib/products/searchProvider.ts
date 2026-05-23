@@ -199,7 +199,7 @@ function mapSerperProduct(p: any, query: string): ProductResult {
     price,
     currency: "USD",
     productUrl: p.link ?? "",
-    imageUrl: p.imageUrl ?? p.thumbnailUrl ?? "",
+    imageUrl: p.imageUrl ?? p.thumbnailUrl ?? p.image ?? "",
     category: inferCategory(query),
     colors: [],
     sizes: [],
@@ -225,7 +225,7 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
   const env = getServerEnv();
   if (!env.serperApiKey) return [];
 
-  const body: Record<string, unknown> = { q: input.query, gl: "us" };
+  const body: Record<string, unknown> = { q: input.query, gl: "us", num: 10 };
   if (input.maxPrice) body.tbs = `p_ord:p,price:1,ppr_max:${Math.round(input.maxPrice)}`;
 
   try {
@@ -238,11 +238,16 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
       body: JSON.stringify(body),
       next: { revalidate: 300 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[Serper] HTTP ${res.status} for query "${input.query}":`, await res.text().catch(() => ""));
+      return [];
+    }
     const json = await res.json();
     const products: unknown[] = json?.shopping ?? [];
-    return products.slice(0, 8).map((p) => mapSerperProduct(p, input.query));
-  } catch {
+    if (products.length === 0) console.warn(`[Serper] 0 results for "${input.query}"`);
+    return products.slice(0, 10).map((p) => mapSerperProduct(p, input.query));
+  } catch (err) {
+    console.error("[Serper] fetch error:", err);
     return [];
   }
 }
