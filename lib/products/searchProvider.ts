@@ -252,6 +252,47 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
   }
 }
 
+/* ── Reddit fragrance scraper ── */
+
+const FRAGRANCE_SUBREDDITS = ["fragrance", "fragranceclones", "maleolefaction"];
+
+async function scrapeRedditFragranceSnippets(
+  sourceName: string
+): Promise<Array<{ title?: string; snippet?: string }>> {
+  const query = encodeURIComponent(`${sourceName} dupe clone alternative`);
+  const snippets: Array<{ title?: string; snippet?: string }> = [];
+
+  await Promise.allSettled(
+    FRAGRANCE_SUBREDDITS.map(async (sub) => {
+      try {
+        const url = `https://www.reddit.com/r/${sub}/search.json?q=${query}&sort=relevance&restrict_sr=1&limit=8&t=all`;
+        const res = await fetch(url, {
+          headers: { "User-Agent": "MaterialMuse/1.0 (fragrance dupe finder)" },
+          next: { revalidate: 3600 },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const posts: unknown[] = json?.data?.children ?? [];
+        for (const child of posts) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const d = (child as any).data;
+          if (!d) continue;
+          snippets.push({
+            title: `[r/${sub}] ${d.title ?? ""}`,
+            snippet: d.selftext
+              ? d.selftext.slice(0, 400)
+              : d.title ?? "",
+          });
+        }
+      } catch {
+        // subreddit unavailable — skip
+      }
+    })
+  );
+
+  return snippets;
+}
+
 /* ── Fragrance community dupe search ── */
 
 const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud";
@@ -293,23 +334,28 @@ export async function searchFragranceCommunityDupes(
 
   const webQuery = `best "${sourceName}" dupe clone Lattafa OR Rasasi OR Afnan OR Rayhaan OR Armaf`;
 
-  // Step 1: Web search to find community-recommended dupe names
+  // Step 1: Web search + Reddit in parallel to find community-recommended dupe names
   let dupeNames: string[] = [];
   try {
-    const webRes = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: webQuery, gl: "us", num: 8 }),
-    });
-    if (webRes.ok) {
-      const json = await webRes.json();
-      const organic: Array<{ title?: string; snippet?: string }> = json.organic ?? [];
-      if (env.anthropicApiKey && organic.length > 0) {
-        dupeNames = await extractFragranceDupeNames(organic, sourceName, env.anthropicApiKey);
-      }
+    const [webRes, redditSnippets] = await Promise.all([
+      fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ q: webQuery, gl: "us", num: 8 }),
+      }),
+      scrapeRedditFragranceSnippets(sourceName),
+    ]);
+
+    const organic: Array<{ title?: string; snippet?: string }> = webRes.ok
+      ? ((await webRes.json()).organic ?? [])
+      : [];
+
+    const allSnippets = [...redditSnippets, ...organic];
+    if (env.anthropicApiKey && allSnippets.length > 0) {
+      dupeNames = await extractFragranceDupeNames(allSnippets, sourceName, env.anthropicApiKey);
     }
   } catch (err) {
-    console.error("[Fragrance] web search error:", err);
+    console.error("[Fragrance] community search error:", err);
   }
 
   // Fallback: direct shopping search biased toward ME brands
