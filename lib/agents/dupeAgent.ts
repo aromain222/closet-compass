@@ -15,7 +15,6 @@ function extractMaterialTerms(source: ProductResult): string {
   const fibers = source.normalizedMaterials.length > 0
     ? source.normalizedMaterials.map((m) => m.fiber)
     : source.listedMaterials;
-  // Skip generic/uninformative fibers that add noise to shopping queries
   const skip = new Set(["unknown", "other", "blend", "fabric", "material"]);
   return fibers
     .filter((f) => f.length >= 3 && !skip.has(f.toLowerCase()))
@@ -53,14 +52,27 @@ function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
   return base;
 }
 
-function isSameBrand(candidateBrand: string, sourceBrand: string, category: DupeCategory): boolean {
-  if (candidateBrand === sourceBrand) return true;
-  // For fragrance, also block prefix matches: "Creed Men's" when source brand is "Creed Aventus"
-  if (category === "fragrance") {
-    const sourceFirstWord = sourceBrand.split(" ")[0];
-    if (sourceFirstWord.length >= 4 && candidateBrand.startsWith(sourceFirstWord)) return true;
+// Serper Shopping sets brand = retailer domain, not the actual product brand.
+// Check both the brand field AND the title to catch same-brand results.
+function isSameBrand(candidate: ProductResult, sourceBrand: string, category: DupeCategory): boolean {
+  const b = candidate.brand.toLowerCase();
+  const titleLower = candidate.title.toLowerCase();
+  if (b === sourceBrand) return true;
+
+  const sourceFirstWord = sourceBrand.split(" ")[0];
+  if (sourceFirstWord.length >= 4) {
+    if (b.startsWith(sourceFirstWord)) return true;
+    // Title check needed for fragrance where brand field = retailer domain
+    if (titleLower.startsWith(sourceFirstWord)) return true;
   }
   return false;
+}
+
+// Reject sample vials and travel sizes — they're not real alternatives
+const SAMPLE_RE = /\b(vial|sample|decant|tester|1\.7\s*ml|1\s*ml|2\s*ml|3\s*ml|travel\s*size|mini\s*spray)\b/i;
+
+function isFragranceSample(candidate: ProductResult): boolean {
+  return SAMPLE_RE.test(candidate.title);
 }
 
 export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons: DupeComparison[]; category: DupeCategory }> {
@@ -68,12 +80,10 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
 
   let candidates: ProductResult[];
   if (category === "fragrance") {
-    // Community-aware search: web search → extract dupe names → shopping lookup
     candidates = await searchFragranceCommunityDupes(input.sourceProduct.title, input.maxPrice);
   } else {
     const provider = getProductSearchProvider();
     const query = buildDupeQuery(input.sourceProduct, category);
-    // Merge caller's preferred materials with those inferred from the source product
     const sourceFibers = input.sourceProduct.normalizedMaterials.map((m) => m.fiber)
       .concat(input.sourceProduct.listedMaterials)
       .filter((f) => f.length >= 3);
@@ -93,7 +103,9 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
   const comparisons = candidates
     .filter((c) => c.id !== input.sourceProduct.id)
     .filter((c) => c.price > 0 && c.price < input.sourceProduct.price)
-    .filter((c) => !isSameBrand(c.brand.toLowerCase(), sourceBrand, category) && c.retailer.toLowerCase() !== sourceRetailer)
+    .filter((c) => !isSameBrand(c, sourceBrand, category))
+    .filter((c) => c.retailer.toLowerCase() !== sourceRetailer)
+    .filter((c) => category !== "fragrance" || !isFragranceSample(c))
     .map((c) => createDupeComparison(input.sourceProduct, c, category))
     .sort((a, b) => b.score.finalDupeScore - a.score.finalDupeScore)
     .slice(0, input.limit ?? 8);
