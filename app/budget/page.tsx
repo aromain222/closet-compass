@@ -123,8 +123,8 @@ export default function BudgetPage() {
       {recommendations.length > 0 && (
         <div className="mt-8 space-y-4">
           <div>
-            <h2 className="font-display text-xl font-light text-warm-dark">What to do with your wishlist</h2>
-            <p className="text-xs text-muted mt-1">Based on your budget, wishlist, and material quality</p>
+            <h2 className="font-display text-xl font-light text-warm-dark">Worth buying from your saved items?</h2>
+            <p className="text-xs text-muted mt-1">Based on your budget, material quality, and what you&rsquo;ve set aside</p>
           </div>
           <div className="space-y-3">
             {recommendations.map((rec) => (

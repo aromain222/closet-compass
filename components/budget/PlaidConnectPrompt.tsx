@@ -1,12 +1,12 @@
 "use client";
 
-import { Lock, TrendingDown, ShoppingBag, Sparkles } from "lucide-react";
+import { Lock, TrendingDown, BarChart2, CircleDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const FEATURES = [
-  { icon: TrendingDown,  text: "See exactly where your shopping spend goes, broken down by category and merchant." },
-  { icon: ShoppingBag,   text: "Track your clothing, beauty, and accessories budget in real time." },
-  { icon: Sparkles,      text: "Get buy / wait signals before you checkout — based on your actual budget." },
+  { icon: TrendingDown,     text: "See exactly where your money goes — broken down by category and merchant, not buried in a statement." },
+  { icon: BarChart2,        text: "Know your real fashion spend at a glance so nothing catches you off guard." },
+  { icon: CircleDollarSign, text: "Get honest buy / pass signals based on your actual numbers — not just gut feeling." },
 ];
 
 interface Props {
@@ -36,10 +36,10 @@ export function PlaidConnectPrompt({ onConnect }: Props) {
             {/* Headline */}
             <div className="space-y-3">
               <h1 className="font-display text-[1.75rem] font-light text-warm-dark leading-tight text-balance">
-                Connect your spending to unlock your style budget.
+                Know exactly where your fashion money goes.
               </h1>
               <p className="text-sm text-muted leading-relaxed text-balance">
-                Material Muse uses your bank data to track fashion purchases, surface spending habits, and help you decide when to buy — and when to wait.
+                Connect your bank and see the full picture — what you&rsquo;re spending, where it&rsquo;s going, and whether any of it is actually worth it.
               </p>
             </div>
 

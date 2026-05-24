@@ -260,7 +260,7 @@ export function DupeComparisonModal({ comparison, onClose, onWishlist, wishliste
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border border-border-strong text-warm-mid hover:border-mauve hover:bg-lavender/10 hover:text-warm-dark transition-all"
               >
-                Shop dupe <ExternalLink size={12} />
+                See deal <ExternalLink size={12} />
               </a>
             )}
           </div>

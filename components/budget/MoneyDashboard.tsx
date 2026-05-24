@@ -234,7 +234,7 @@ export function MoneyDashboard({ data, onRefresh, isMockPreview, refreshing }: P
 
       {/* ── Top merchants ── */}
       <div className="bg-card rounded-2xl border border-soft p-5 space-y-3.5 card-shadow">
-        <p className="text-[10px] text-muted uppercase tracking-wider font-medium">Where you shopped</p>
+        <p className="text-[10px] text-muted uppercase tracking-wider font-medium">Where the money went</p>
         {data.topMerchants.map((m) => {
           const maxSpend = Math.max(...data.topMerchants.map(x => x.spend));
           const pct = Math.round((m.spend / maxSpend) * 100);

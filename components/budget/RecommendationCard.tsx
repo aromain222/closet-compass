@@ -16,7 +16,7 @@ interface ActionStyle {
 const ACTION: Record<string, ActionStyle> = {
   buy_now: {
     badge: "success",
-    label: "Go for it",
+    label: "Worth it",
     accent: "border-l-[3px] border-l-green-200",
   },
   wait_for_drop: {

@@ -6,7 +6,7 @@ import { Shuffle, Heart, Wallet, Settings } from "lucide-react";
 
 const links = [
   { href: "/dupes", label: "Dupes", icon: Shuffle },
-  { href: "/wishlist", label: "Wishlist", icon: Heart },
+  { href: "/wishlist", label: "Saved", icon: Heart },
   { href: "/budget", label: "Spending", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
