@@ -1,7 +1,7 @@
 import type { DupeComparison, ProductResult } from "@/lib/products/types";
 import { createDupeComparison } from "@/lib/dupes/dupeScore";
 import { detectDupeCategory, type DupeCategory } from "@/lib/dupes/categoryDetect";
-import { getProductSearchProvider, searchFragranceCommunityDupes } from "@/lib/products/searchProvider";
+import { getProductSearchProvider, searchFragranceCommunityDupes, searchCategoryDupes } from "@/lib/products/searchProvider";
 
 interface DupeAgentInput {
   sourceProduct: ProductResult;
@@ -88,13 +88,24 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
       .concat(input.sourceProduct.listedMaterials)
       .filter((f) => f.length >= 3);
     const preferred = [...new Set([...(input.preferredMaterials ?? []), ...sourceFibers])];
+    const maxPrice = input.maxPrice ?? input.sourceProduct.price - 1;
 
-    candidates = await provider.search({
-      query,
-      maxPrice: input.maxPrice ?? input.sourceProduct.price - 1,
-      preferredMaterials: preferred.length > 0 ? preferred : undefined,
-      avoidMaterials: input.avoidMaterials,
-    });
+    const [shoppingResults, communityResults] = await Promise.all([
+      provider.search({
+        query,
+        maxPrice,
+        preferredMaterials: preferred.length > 0 ? preferred : undefined,
+        avoidMaterials: input.avoidMaterials,
+      }),
+      searchCategoryDupes(input.sourceProduct.title, category as "clothing" | "bag" | "jewelry", maxPrice),
+    ]);
+
+    // Merge: community picks first, shopping fills remaining slots
+    const seen = new Set<string>();
+    candidates = [];
+    for (const p of [...communityResults, ...shoppingResults]) {
+      if (!seen.has(p.id)) { seen.add(p.id); candidates.push(p); }
+    }
   }
 
   const sourceBrand = input.sourceProduct.brand.toLowerCase();

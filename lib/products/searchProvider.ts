@@ -252,30 +252,28 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
   }
 }
 
-/* ── Reddit fragrance scraper ── */
+/* ── Reddit community scraper ── */
 
-const FRAGRANCE_SUBREDDITS = [
-  "fragrance",
-  "fragranceclones",
-  "maleolefaction",
-  "CologneClones",
-  "FemaleFragrance",
-  "scentsamples",
-  "DesiFragranceClones",
-];
+const SUBREDDITS: Record<string, string[]> = {
+  fragrance: ["fragrance", "fragranceclones", "maleolefaction", "CologneClones", "FemaleFragrance", "scentsamples", "DesiFragranceClones"],
+  clothing:  ["femalefashionadvice", "malefashionadvice", "frugalmalefashion", "frugalfemalefashion", "findfashion", "fashionadvice", "RepLadies"],
+  bag:       ["handbags", "RepLadies", "femalefashionadvice", "findfashion", "luxuryrepsforsale"],
+  jewelry:   ["jewelry", "jewelrymaking", "femalefashionadvice", "findfashion", "moissanite"],
+};
 
-async function scrapeRedditFragranceSnippets(
-  sourceName: string
+async function scrapeRedditSnippets(
+  sourceName: string,
+  subreddits: string[]
 ): Promise<Array<{ title?: string; snippet?: string }>> {
-  const query = encodeURIComponent(`${sourceName} dupe clone alternative`);
+  const query = encodeURIComponent(`${sourceName} dupe alternative cheaper`);
   const snippets: Array<{ title?: string; snippet?: string }> = [];
 
   await Promise.allSettled(
-    FRAGRANCE_SUBREDDITS.map(async (sub) => {
+    subreddits.map(async (sub) => {
       try {
-        const url = `https://www.reddit.com/r/${sub}/search.json?q=${query}&sort=relevance&restrict_sr=1&limit=8&t=all`;
+        const url = `https://www.reddit.com/r/${sub}/search.json?q=${query}&sort=relevance&restrict_sr=1&limit=6&t=all`;
         const res = await fetch(url, {
-          headers: { "User-Agent": "MaterialMuse/1.0 (fragrance dupe finder)" },
+          headers: { "User-Agent": "MaterialMuse/1.0 (fashion dupe finder)" },
           next: { revalidate: 3600 },
         });
         if (!res.ok) return;
@@ -287,14 +285,10 @@ async function scrapeRedditFragranceSnippets(
           if (!d) continue;
           snippets.push({
             title: `[r/${sub}] ${d.title ?? ""}`,
-            snippet: d.selftext
-              ? d.selftext.slice(0, 400)
-              : d.title ?? "",
+            snippet: d.selftext ? d.selftext.slice(0, 400) : d.title ?? "",
           });
         }
-      } catch {
-        // subreddit unavailable — skip
-      }
+      } catch { /* subreddit unavailable — skip */ }
     })
   );
 
@@ -305,24 +299,25 @@ async function scrapeRedditFragranceSnippets(
 
 const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud";
 
-async function extractFragranceDupeNames(
+async function extractDupeNames(
   snippets: Array<{ title?: string; snippet?: string }>,
   sourceName: string,
+  category: string,
   apiKey: string
 ): Promise<string[]> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
-  const context = snippets
-    .slice(0, 8)
-    .map((s) => `${s.title ?? ""}: ${s.snippet ?? ""}`)
-    .join("\n");
+  const context = snippets.slice(0, 10).map((s) => `${s.title ?? ""}: ${s.snippet ?? ""}`).join("\n");
+  const hint = category === "fragrance"
+    ? `Strongly prefer Middle Eastern fragrance brands (${ME_BRANDS}) when they appear.`
+    : `Focus on affordable alternatives with similar style and materials.`;
   try {
     const msg = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `From these search results about fragrance dupes for "${sourceName}", extract specific product names (brand + fragrance name) recommended as dupes or clones. Strongly prefer Middle Eastern fragrance brands (${ME_BRANDS}) when they appear. Return a JSON array of strings, max 4 names. Return [] if none found.\n\n${context}`,
+        content: `From these community posts about ${category} dupes for "${sourceName}", extract specific product names (brand + product name) recommended as dupes or cheaper alternatives. ${hint} Return a JSON array of strings, max 5 names. Return [] if none found.\n\n${context}`,
       }],
     });
     const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
@@ -351,7 +346,7 @@ export async function searchFragranceCommunityDupes(
         headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
         body: JSON.stringify({ q: webQuery, gl: "us", num: 8 }),
       }),
-      scrapeRedditFragranceSnippets(sourceName),
+      scrapeRedditSnippets(sourceName, SUBREDDITS.fragrance),
     ]);
 
     const organic: Array<{ title?: string; snippet?: string }> = webRes.ok
@@ -360,7 +355,7 @@ export async function searchFragranceCommunityDupes(
 
     const allSnippets = [...redditSnippets, ...organic];
     if (env.anthropicApiKey && allSnippets.length > 0) {
-      dupeNames = await extractFragranceDupeNames(allSnippets, sourceName, env.anthropicApiKey);
+      dupeNames = await extractDupeNames(allSnippets, sourceName, "fragrance", env.anthropicApiKey);
     }
   } catch (err) {
     console.error("[Fragrance] community search error:", err);
@@ -375,6 +370,32 @@ export async function searchFragranceCommunityDupes(
   const results: ProductResult[] = [];
   const seen = new Set<string>();
   for (const name of dupeNames.slice(0, 4)) {
+    try {
+      const hits = await searchSerper({ query: name, maxPrice });
+      for (const h of hits) {
+        if (!seen.has(h.id) && h.price > 0) { seen.add(h.id); results.push(h); }
+      }
+    } catch { /* skip */ }
+  }
+  return results.slice(0, 10);
+}
+
+export async function searchCategoryDupes(
+  sourceName: string,
+  category: "clothing" | "bag" | "jewelry",
+  maxPrice: number | undefined
+): Promise<ProductResult[]> {
+  const env = getServerEnv();
+  const subs = SUBREDDITS[category] ?? SUBREDDITS.clothing;
+  const redditSnippets = await scrapeRedditSnippets(sourceName, subs);
+  if (redditSnippets.length === 0 || !env.anthropicApiKey) return [];
+
+  const dupeNames = await extractDupeNames(redditSnippets, sourceName, category, env.anthropicApiKey);
+  if (dupeNames.length === 0) return [];
+
+  const results: ProductResult[] = [];
+  const seen = new Set<string>();
+  for (const name of dupeNames.slice(0, 5)) {
     try {
       const hits = await searchSerper({ query: name, maxPrice });
       for (const h of hits) {
