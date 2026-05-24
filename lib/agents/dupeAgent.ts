@@ -11,6 +11,18 @@ interface DupeAgentInput {
   limit?: number;
 }
 
+function extractMaterialTerms(source: ProductResult): string {
+  const fibers = source.normalizedMaterials.length > 0
+    ? source.normalizedMaterials.map((m) => m.fiber)
+    : source.listedMaterials;
+  // Skip generic/uninformative fibers that add noise to shopping queries
+  const skip = new Set(["unknown", "other", "blend", "fabric", "material"]);
+  return fibers
+    .filter((f) => f.length >= 3 && !skip.has(f.toLowerCase()))
+    .slice(0, 2)
+    .join(" ");
+}
+
 function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
   if (category === "fragrance") {
     const cleaned = source.title
@@ -30,12 +42,15 @@ function buildDupeQuery(source: ProductResult, category: DupeCategory): string {
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !stopWords.has(w) && !brandWords.has(w))
-    .slice(0, 4)
+    .slice(0, 3)
     .join(" ");
 
-  if (category === "jewelry") return (keywords || source.title) + " jewelry dupe";
-  if (category === "bag") return (keywords || source.title) + " bag dupe alternative";
-  return keywords || source.title;
+  const materials = extractMaterialTerms(source);
+  const base = [keywords || source.title, materials].filter(Boolean).join(" ").trim();
+
+  if (category === "jewelry") return base + " jewelry dupe";
+  if (category === "bag") return base + " bag dupe alternative";
+  return base;
 }
 
 function isSameBrand(candidateBrand: string, sourceBrand: string, category: DupeCategory): boolean {
@@ -58,10 +73,16 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
   } else {
     const provider = getProductSearchProvider();
     const query = buildDupeQuery(input.sourceProduct, category);
+    // Merge caller's preferred materials with those inferred from the source product
+    const sourceFibers = input.sourceProduct.normalizedMaterials.map((m) => m.fiber)
+      .concat(input.sourceProduct.listedMaterials)
+      .filter((f) => f.length >= 3);
+    const preferred = [...new Set([...(input.preferredMaterials ?? []), ...sourceFibers])];
+
     candidates = await provider.search({
       query,
       maxPrice: input.maxPrice ?? input.sourceProduct.price - 1,
-      preferredMaterials: input.preferredMaterials,
+      preferredMaterials: preferred.length > 0 ? preferred : undefined,
       avoidMaterials: input.avoidMaterials,
     });
   }
