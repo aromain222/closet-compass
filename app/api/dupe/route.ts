@@ -24,7 +24,6 @@ export async function POST(request: Request) {
       preferredMaterials: input.preferredMaterials,
       avoidMaterials: input.avoidMaterials,
       limit: input.limit,
-      preferMiddleEasternFragrance: input.preferMiddleEasternFragrance,
     });
     const typedComparisons = DupeComparisonSchema.array().parse(comparisons);
 

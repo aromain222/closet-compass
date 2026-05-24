@@ -207,8 +207,6 @@ function DupesContent() {
   const [inputValue, setInputValue] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
-  const [preferME, setPreferME] = useState(false);
-
   const [searchResults, setSearchResults] = useState<ProductResult[]>([]);
   const [sourceProduct, setSourceProduct] = useState<ProductResult | null>(null);
   const [dupes, setDupes] = useState<DupeComparison[]>([]);
@@ -243,7 +241,7 @@ function DupesContent() {
     setStep("searching");
     setError(null);
     try {
-      const res = await api.findDupes({ productId: id, maxPrice: maxPrice ? Number(maxPrice) : undefined, preferMiddleEasternFragrance: preferME });
+      const res = await api.findDupes({ productId: id, maxPrice: maxPrice ? Number(maxPrice) : undefined });
       setSourceProduct(res.sourceProduct);
       setDupes(res.alternatives);
       setAgentSummary(res.agentSummary);
@@ -259,7 +257,7 @@ function DupesContent() {
     setStep("searching");
     setError(null);
     try {
-      const res = await api.findDupes({ sourceProduct: product, maxPrice: maxPrice ? Number(maxPrice) : undefined, preferMiddleEasternFragrance: preferME });
+      const res = await api.findDupes({ sourceProduct: product, maxPrice: maxPrice ? Number(maxPrice) : undefined });
       setDupes(res.alternatives);
       setAgentSummary(res.agentSummary);
       setStep("dupes");
@@ -404,21 +402,6 @@ function DupesContent() {
                     className="w-full pl-7 pr-4 py-3 rounded-xl border border-soft bg-card text-sm text-warm-dark placeholder:text-muted/50 focus:outline-none focus:border-mauve transition-colors"
                   />
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPreferME((v) => !v)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    preferME
-                      ? "bg-lavender/20 border-lavender/60 text-warm-dark font-medium"
-                      : "bg-card border-soft text-muted hover:border-mauve hover:text-warm-dark"
-                  }`}
-                >
-                  Middle Eastern brands
-                </button>
-                <p className="text-[11px] text-muted">for fragrance dupes</p>
               </div>
 
               <Button

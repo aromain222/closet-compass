@@ -254,13 +254,12 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
 
 /* ── Fragrance community dupe search ── */
 
-const ME_BRANDS = "Lattafa, Rasasi, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Afnan, Fragrance World, Arabian Oud";
+const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud";
 
 async function extractFragranceDupeNames(
   snippets: Array<{ title?: string; snippet?: string }>,
   sourceName: string,
-  apiKey: string,
-  preferMiddleEastern: boolean
+  apiKey: string
 ): Promise<string[]> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
@@ -268,16 +267,13 @@ async function extractFragranceDupeNames(
     .slice(0, 8)
     .map((s) => `${s.title ?? ""}: ${s.snippet ?? ""}`)
     .join("\n");
-  const meInstruction = preferMiddleEastern
-    ? `Strongly prefer Middle Eastern fragrance brands (${ME_BRANDS}) when they appear in the results. `
-    : "";
   try {
     const msg = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `From these search results about fragrance dupes for "${sourceName}", extract specific product names (brand + fragrance name) recommended as dupes or clones. ${meInstruction}Return a JSON array of strings, max 4 names. Return [] if none found.\n\n${context}`,
+        content: `From these search results about fragrance dupes for "${sourceName}", extract specific product names (brand + fragrance name) recommended as dupes or clones. Strongly prefer Middle Eastern fragrance brands (${ME_BRANDS}) when they appear. Return a JSON array of strings, max 4 names. Return [] if none found.\n\n${context}`,
       }],
     });
     const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
@@ -290,14 +286,12 @@ async function extractFragranceDupeNames(
 
 export async function searchFragranceCommunityDupes(
   sourceName: string,
-  maxPrice: number | undefined,
-  preferMiddleEastern = false
+  maxPrice: number | undefined
 ): Promise<ProductResult[]> {
   const env = getServerEnv();
   if (!env.serperApiKey) return [];
 
-  const meQuery = preferMiddleEastern ? ` ${ME_BRANDS.split(",")[0]} OR ${ME_BRANDS.split(",")[1]} OR ${ME_BRANDS.split(",")[2]}` : "";
-  const webQuery = `best "${sourceName}" dupe clone alternative fragrance${meQuery}`;
+  const webQuery = `best "${sourceName}" dupe clone Lattafa OR Rasasi OR Afnan OR Rayhaan OR Armaf`;
 
   // Step 1: Web search to find community-recommended dupe names
   let dupeNames: string[] = [];
@@ -311,19 +305,16 @@ export async function searchFragranceCommunityDupes(
       const json = await webRes.json();
       const organic: Array<{ title?: string; snippet?: string }> = json.organic ?? [];
       if (env.anthropicApiKey && organic.length > 0) {
-        dupeNames = await extractFragranceDupeNames(organic, sourceName, env.anthropicApiKey, preferMiddleEastern);
+        dupeNames = await extractFragranceDupeNames(organic, sourceName, env.anthropicApiKey);
       }
     }
   } catch (err) {
     console.error("[Fragrance] web search error:", err);
   }
 
-  // Fallback: direct shopping search for "dupe {sourceName}"
+  // Fallback: direct shopping search biased toward ME brands
   if (dupeNames.length === 0) {
-    const fallbackQuery = preferMiddleEastern
-      ? `Lattafa OR Rasasi OR Armaf ${sourceName} dupe`
-      : `${sourceName} dupe affordable`;
-    return searchSerper({ query: fallbackQuery, maxPrice });
+    return searchSerper({ query: `Lattafa OR Rasasi OR Afnan ${sourceName} dupe`, maxPrice });
   }
 
   // Step 2: Search shopping for each community-recommended dupe
