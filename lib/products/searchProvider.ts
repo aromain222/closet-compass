@@ -254,7 +254,15 @@ async function searchSerper(input: ProductSearchInput): Promise<ProductResult[]>
 
 /* ── Reddit fragrance scraper ── */
 
-const FRAGRANCE_SUBREDDITS = ["fragrance", "fragranceclones", "maleolefaction"];
+const FRAGRANCE_SUBREDDITS = [
+  "fragrance",
+  "fragranceclones",
+  "maleolefaction",
+  "CologneClones",
+  "FemaleFragrance",
+  "scentsamples",
+  "DesiFragranceClones",
+];
 
 async function scrapeRedditFragranceSnippets(
   sourceName: string
