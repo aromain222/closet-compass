@@ -361,6 +361,20 @@ export async function searchFragranceCommunityDupes(
     searchShobiInspirations(sourceName, maxPrice),
   ]);
   const offlineResults = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
+
+  // Always supplement with a live ME brand shopping search so female fragrances
+  // not yet in the curated database still surface Lattafa/Afnan/Armaf/Maison Alhambra hits
+  if (env.serperApiKey && offlineResults.length < 5) {
+    try {
+      const meHits = await searchSerper({
+        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan dupe`,
+        maxPrice,
+      });
+      const merged = mergeUniqueProducts([...offlineResults, ...meHits]);
+      if (merged.length > 0) return merged.slice(0, 10);
+    } catch { /* fall through */ }
+  }
+
   if (offlineResults.length > 0) return offlineResults.slice(0, 10);
   if (!env.serperApiKey) return [];
 
