@@ -1,5 +1,9 @@
 import type { ProductResult, ProductSearchInput } from "@/lib/products/types";
 import { enrichProducts } from "@/lib/materials/enrichMaterials";
+import {
+  findCuratedFragranceClones,
+  fragranceCloneToProduct,
+} from "@/lib/intelligence/fragrance/cloneIntelligence";
 import { getServerEnv } from "@/lib/utils/env";
 
 export interface ProductSearchProvider {
@@ -335,6 +339,8 @@ export async function searchFragranceCommunityDupes(
   maxPrice: number | undefined
 ): Promise<ProductResult[]> {
   const env = getServerEnv();
+  const curatedResults = findCuratedFragranceClones(sourceName, maxPrice).map(fragranceCloneToProduct);
+  if (curatedResults.length > 0) return curatedResults.slice(0, 10);
   if (!env.serperApiKey) return [];
 
   const webQuery = `best "${sourceName}" dupe clone alternative fragrance`;

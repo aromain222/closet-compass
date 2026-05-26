@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const n = typedComparisons.length;
     const summaryByCategory: Record<string, string> = {
       fragrance: n > 0
-        ? `Found ${n} cheaper fragrance alternative${n === 1 ? "" : "s"} — ranked by price savings.`
+        ? `Found ${n} cheaper fragrance alternative${n === 1 ? "" : "s"} — ranked by curated fidelity, longevity, projection, and savings.`
         : "No cheaper fragrance alternatives found. Try a different budget range.",
       jewelry: n > 0
         ? `Found ${n} style-matched alternative${n === 1 ? "" : "s"} — ranked by visual similarity and savings. Material not factored.`

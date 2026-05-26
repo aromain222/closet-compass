@@ -33,6 +33,37 @@ function scoreBrandReviewQuality(candidate: ProductResult): number {
   return Math.round(scoreMaterialQuality(candidate) * 0.6 + (candidate.reviewSummary ? 82 : 55) * 0.4);
 }
 
+function parseFragranceIntelligence(candidate: ProductResult): {
+  fidelity?: number;
+  persistenceHours?: number;
+  projection?: number;
+} {
+  const summary = candidate.reviewSummary ?? "";
+  const fidelity = summary.match(/(\d+(?:\.\d+)?)%\s+fidelity/i)?.[1];
+  const persistenceHours = summary.match(/(\d+(?:\.\d+)?)h\s+persistence/i)?.[1];
+  const projection = summary.match(/projection\s+(\d+(?:\.\d+)?)\/10/i)?.[1];
+
+  return {
+    fidelity: fidelity ? Number(fidelity) : undefined,
+    persistenceHours: persistenceHours ? Number(persistenceHours) : undefined,
+    projection: projection ? Number(projection) : undefined,
+  };
+}
+
+function scoreFragranceQuality(candidate: ProductResult): number {
+  const signals = parseFragranceIntelligence(candidate);
+  if (!signals.fidelity) return scoreBrandReviewQuality(candidate);
+
+  const persistenceScore = signals.persistenceHours
+    ? Math.min(100, Math.round(signals.persistenceHours * 10))
+    : 60;
+  const projectionScore = signals.projection
+    ? Math.min(100, Math.round(signals.projection * 10))
+    : 60;
+
+  return Math.round(signals.fidelity * 0.55 + persistenceScore * 0.3 + projectionScore * 0.15);
+}
+
 function describeBlend(product: ProductResult): string {
   if (product.normalizedMaterials.length === 0) return "unknown material blend";
   return product.normalizedMaterials
@@ -55,7 +86,10 @@ export function generateDupeLabel(input: {
   const category = input.category ?? "clothing";
 
   if (category === "fragrance") {
-    if (input.priceSavings >= 40) return "strong_dupe";
+    if (input.materialSimilarity >= 90 && input.priceSavings >= 35 && input.candidateReviewQuality >= 80) {
+      return "strong_dupe";
+    }
+    if (input.materialSimilarity > 0 && input.materialSimilarity < 78) return "avoid";
     if (input.priceSavings >= 20) return "consider";
     return "consider";
   }
@@ -133,6 +167,20 @@ export function generateDupeExplanation(input: {
   const category = input.category ?? "clothing";
 
   if (category === "fragrance") {
+    const signals = parseFragranceIntelligence(alternativeProduct);
+    if (signals.fidelity) {
+      const persistence = signals.persistenceHours ? `${signals.persistenceHours}h persistence` : "unverified longevity";
+      const projection = signals.projection ? `${signals.projection}/10 projection` : "unverified projection";
+      const label =
+        recommendation === "strong_dupe"
+          ? "a strong fragrance dupe"
+          : recommendation === "avoid"
+            ? "a weak fragrance dupe despite the lower price"
+            : "a fragrance alternative to consider";
+
+      return `${alternativeProduct.title} is ${label} for ${sourceProduct.title}: curated intelligence lists ${signals.fidelity}% fidelity, ${persistence}, and ${projection}, while saving ${input.priceSavings}%.`;
+    }
+
     const review = alternativeProduct.reviewSummary ? ` ${alternativeProduct.reviewSummary}.` : "";
     return `${alternativeProduct.title} is an affordable fragrance alternative that saves ${input.priceSavings}% vs. ${sourceProduct.title}.${review}`;
   }
@@ -173,7 +221,7 @@ const CATEGORY_WEIGHTS: Record<DupeCategory, [number, number, number, number, nu
   clothing: [0.55,    0.10,   0.10, 0.15, 0.05, 0.05],
   jewelry:  [0.00,    0.55,   0.00, 0.35, 0.05, 0.05],
   bag:      [0.25,    0.30,   0.05, 0.30, 0.05, 0.05],
-  fragrance:[0.00,    0.00,   0.00, 0.65, 0.25, 0.10],
+  fragrance:[0.55,    0.00,   0.00, 0.25, 0.15, 0.05],
 };
 
 export function calculateDupeScore(
@@ -182,18 +230,29 @@ export function calculateDupeScore(
   category: DupeCategory = "clothing"
 ): DupeScoreBreakdown {
   const material = scoreMaterialSimilarity(sourceProduct, alternativeProduct);
+  const fragranceSignals = category === "fragrance"
+    ? parseFragranceIntelligence(alternativeProduct)
+    : {};
+  const materialSimilarity = category === "fragrance" && fragranceSignals.fidelity
+    ? fragranceSignals.fidelity
+    : material.score;
+  const materialExplanation = category === "fragrance" && fragranceSignals.fidelity
+    ? `Fragrance match is based on curated scent fidelity: ${fragranceSignals.fidelity}% similarity, ${fragranceSignals.persistenceHours ?? "unknown"}h persistence, and ${fragranceSignals.projection ?? "unknown"}/10 projection.`
+    : material.explanation;
   const visualSimilarity = scoreVisualPlaceholder(sourceProduct, alternativeProduct);
   const fitSimilarity = scoreFitSimilarity(sourceProduct, alternativeProduct);
   const priceSavings = scorePriceSavings(sourceProduct, alternativeProduct);
-  const brandReviewQuality = scoreBrandReviewQuality(alternativeProduct);
+  const brandReviewQuality = category === "fragrance"
+    ? scoreFragranceQuality(alternativeProduct)
+    : scoreBrandReviewQuality(alternativeProduct);
   const sourceMaterialQuality = scoreMaterialQuality(sourceProduct);
   const candidateMaterialQuality = scoreMaterialQuality(alternativeProduct);
-  const confidence = Math.round(
-    ((sourceProduct.materialConfidence + alternativeProduct.materialConfidence) / 2) * 100
-  );
+  const confidence = category === "fragrance" && fragranceSignals.fidelity
+    ? Math.min(100, Math.round(50 + fragranceSignals.fidelity * 0.5))
+    : Math.round(((sourceProduct.materialConfidence + alternativeProduct.materialConfidence) / 2) * 100);
   const recommendation = generateDupeLabel({
     visualSimilarity,
-    materialSimilarity: material.score,
+    materialSimilarity,
     priceSavings,
     sourceMaterialQuality,
     candidateMaterialQuality,
@@ -203,11 +262,11 @@ export function calculateDupeScore(
     candidateMaterialConfidenceLabel: alternativeProduct.materialConfidenceLabel,
     category,
   });
-  const risks = buildRisks(sourceProduct, alternativeProduct, material.score, category);
+  const risks = buildRisks(sourceProduct, alternativeProduct, materialSimilarity, category);
 
   const [wMat, wVis, wFit, wPrice, wReview, wConf] = CATEGORY_WEIGHTS[category];
   const finalDupeScore = Math.round(
-    material.score * wMat +
+    materialSimilarity * wMat +
       visualSimilarity * wVis +
       fitSimilarity * wFit +
       priceSavings * wPrice +
@@ -217,25 +276,25 @@ export function calculateDupeScore(
   const explanation = generateDupeExplanation({
     sourceProduct,
     alternativeProduct,
-    materialSimilarity: material.score,
+    materialSimilarity,
     fitSimilarity,
     priceSavings,
     recommendation,
-    materialExplanation: material.explanation,
+    materialExplanation,
     risks,
     category,
   });
 
   return {
     visualSimilarity,
-    materialSimilarity: material.score,
+    materialSimilarity,
     fitSimilarity,
     priceSavings,
     brandReviewQuality,
     confidence,
     finalDupeScore,
     recommendation,
-    materialExplanation: material.explanation,
+    materialExplanation,
     explanation,
     risks
   };
