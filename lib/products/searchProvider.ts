@@ -367,7 +367,7 @@ export async function searchFragranceCommunityDupes(
   if (env.serperApiKey && offlineResults.length < 5) {
     try {
       const meHits = await searchSerper({
-        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan dupe`,
+        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal dupe`,
         maxPrice,
       });
       const merged = mergeUniqueProducts([...offlineResults, ...meHits]);
