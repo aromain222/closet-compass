@@ -166,6 +166,8 @@ Rayhaan Oud|Rayhaan|Oud niche blend|85|9|8
 Blue Fate|ALT. Fragrances|Ex Nihilo Blue Talisman|95|8|8.5
 The Blu Talassim|Alexandria Fragrances|Ex Nihilo Blue Talisman|90|9|8.5
 Blue Spell|Yom & Layl|Ex Nihilo Blue Talisman|88|8|8
+Turathi Electric|Afnan|Ex Nihilo Blue Talisman|92|9|8.5
+Art of Universe|Lattafa|Ex Nihilo Blue Talisman|88|8.5|8.5
 `.trim();
 
 export const fragranceCloneIntelligence: FragranceCloneIntelligence[] = RAW_FRAGRANCE_CLONES
