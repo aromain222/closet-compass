@@ -37,21 +37,38 @@ function parseFragranceIntelligence(candidate: ProductResult): {
   fidelity?: number;
   persistenceHours?: number;
   projection?: number;
+  scentRating?: number;
+  longevityRating?: number;
+  sillageRating?: number;
 } {
   const summary = candidate.reviewSummary ?? "";
   const fidelity = summary.match(/(\d+(?:\.\d+)?)%\s+fidelity/i)?.[1];
   const persistenceHours = summary.match(/(\d+(?:\.\d+)?)h\s+persistence/i)?.[1];
   const projection = summary.match(/projection\s+(\d+(?:\.\d+)?)\/10/i)?.[1];
+  const scentRating = summary.match(/scent rating\s+(\d+(?:\.\d+)?)\/10/i)?.[1];
+  const longevityRating = summary.match(/longevity\s+(\d+(?:\.\d+)?)\/10/i)?.[1];
+  const sillageRating = summary.match(/sillage\s+(\d+(?:\.\d+)?)\/10/i)?.[1];
 
   return {
     fidelity: fidelity ? Number(fidelity) : undefined,
     persistenceHours: persistenceHours ? Number(persistenceHours) : undefined,
     projection: projection ? Number(projection) : undefined,
+    scentRating: scentRating ? Number(scentRating) : undefined,
+    longevityRating: longevityRating ? Number(longevityRating) : undefined,
+    sillageRating: sillageRating ? Number(sillageRating) : undefined,
   };
 }
 
 function scoreFragranceQuality(candidate: ProductResult): number {
   const signals = parseFragranceIntelligence(candidate);
+
+  if (signals.scentRating) {
+    const scentScore = Math.round(signals.scentRating * 10);
+    const longevityScore = signals.longevityRating ? Math.round(signals.longevityRating * 10) : 60;
+    const sillageScore = signals.sillageRating ? Math.round(signals.sillageRating * 10) : 60;
+    return Math.min(100, Math.round(scentScore * 0.5 + longevityScore * 0.3 + sillageScore * 0.2));
+  }
+
   if (!signals.fidelity) return scoreBrandReviewQuality(candidate);
 
   const persistenceScore = signals.persistenceHours
@@ -181,6 +198,12 @@ export function generateDupeExplanation(input: {
       return `${alternativeProduct.title} is ${label} for ${sourceProduct.title}: curated intelligence lists ${signals.fidelity}% fidelity, ${persistence}, and ${projection}, while saving ${input.priceSavings}%.`;
     }
 
+    if (signals.scentRating) {
+      const longevity = signals.longevityRating ? `${signals.longevityRating}/10 longevity` : "unverified longevity";
+      const sillage = signals.sillageRating ? `${signals.sillageRating}/10 sillage` : "unverified sillage";
+      return `${alternativeProduct.title} is a Shobi catalog inspiration for ${sourceProduct.title}: the catalog lists ${signals.scentRating}/10 scent quality, ${longevity}, and ${sillage}, while saving ${input.priceSavings}%.`;
+    }
+
     const review = alternativeProduct.reviewSummary ? ` ${alternativeProduct.reviewSummary}.` : "";
     return `${alternativeProduct.title} is an affordable fragrance alternative that saves ${input.priceSavings}% vs. ${sourceProduct.title}.${review}`;
   }
@@ -235,9 +258,13 @@ export function calculateDupeScore(
     : {};
   const materialSimilarity = category === "fragrance" && fragranceSignals.fidelity
     ? fragranceSignals.fidelity
+    : category === "fragrance" && fragranceSignals.scentRating
+      ? Math.min(88, Math.round(fragranceSignals.scentRating * 10))
     : material.score;
   const materialExplanation = category === "fragrance" && fragranceSignals.fidelity
     ? `Fragrance match is based on curated scent fidelity: ${fragranceSignals.fidelity}% similarity, ${fragranceSignals.persistenceHours ?? "unknown"}h persistence, and ${fragranceSignals.projection ?? "unknown"}/10 projection.`
+    : category === "fragrance" && fragranceSignals.scentRating
+      ? `Fragrance match is based on Shobi inspiration catalog ratings: ${fragranceSignals.scentRating}/10 scent quality, ${fragranceSignals.longevityRating ?? "unknown"}/10 longevity, and ${fragranceSignals.sillageRating ?? "unknown"}/10 sillage.`
     : material.explanation;
   const visualSimilarity = scoreVisualPlaceholder(sourceProduct, alternativeProduct);
   const fitSimilarity = scoreFitSimilarity(sourceProduct, alternativeProduct);
@@ -249,6 +276,8 @@ export function calculateDupeScore(
   const candidateMaterialQuality = scoreMaterialQuality(alternativeProduct);
   const confidence = category === "fragrance" && fragranceSignals.fidelity
     ? Math.min(100, Math.round(50 + fragranceSignals.fidelity * 0.5))
+    : category === "fragrance" && fragranceSignals.scentRating
+      ? Math.min(88, Math.round(45 + fragranceSignals.scentRating * 5))
     : Math.round(((sourceProduct.materialConfidence + alternativeProduct.materialConfidence) / 2) * 100);
   const recommendation = generateDupeLabel({
     visualSimilarity,

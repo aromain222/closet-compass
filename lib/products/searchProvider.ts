@@ -4,6 +4,7 @@ import {
   findCuratedFragranceClones,
   fragranceCloneToProduct,
 } from "@/lib/intelligence/fragrance/cloneIntelligence";
+import { searchShobiInspirations } from "@/lib/intelligence/fragrance/shobiInspiration";
 import { getServerEnv } from "@/lib/utils/env";
 
 export interface ProductSearchProvider {
@@ -51,6 +52,20 @@ function makeMaterialBlend(materials: string[]) {
 function confidenceLabel(materials: string[]): "low" | "medium" | "high" {
   if (materials.length === 0) return "low";
   return "low";
+}
+
+function mergeUniqueProducts(products: ProductResult[]): ProductResult[] {
+  const seen = new Set<string>();
+  const merged: ProductResult[] = [];
+
+  for (const product of products) {
+    if (!seen.has(product.id)) {
+      seen.add(product.id);
+      merged.push(product);
+    }
+  }
+
+  return merged;
 }
 
 /* ── Amazon provider ── */
@@ -340,7 +355,9 @@ export async function searchFragranceCommunityDupes(
 ): Promise<ProductResult[]> {
   const env = getServerEnv();
   const curatedResults = findCuratedFragranceClones(sourceName, maxPrice).map(fragranceCloneToProduct);
-  if (curatedResults.length > 0) return curatedResults.slice(0, 10);
+  const shobiResults = await searchShobiInspirations(sourceName, maxPrice);
+  const offlineResults = mergeUniqueProducts([...curatedResults, ...shobiResults]);
+  if (offlineResults.length > 0) return offlineResults.slice(0, 10);
   if (!env.serperApiKey) return [];
 
   const webQuery = `best "${sourceName}" dupe clone alternative fragrance`;

@@ -1,10 +1,10 @@
 export type DupeCategory = "clothing" | "jewelry" | "bag" | "fragrance";
 
-const FRAGRANCE_KEYWORDS_RE = /\b(perfumes?|fragrance|cologne|eau\s*de|edt|edp|scent|parfums?|mist|toilette)\b/i;
+const FRAGRANCE_KEYWORDS_RE = /\b(perfumes?|fragrance|cologne|eau\s*de|edt|edp|scent|parfums?|mist|toilette|shobi)\b/i;
 
 // Well-known fragrance house names — when these appear alone (no bag/jewelry/clothing context) treat as fragrance
 // Luxury houses + ME clone brands + popular western dupe brands
-const FRAGRANCE_BRANDS_RE = /\b(chanel|dior|ysl|saint\s*laurent|gucci|prada|tom\s*ford|jo\s*malone|maison\s*margiela|creed|byredo|le\s*labo|diptyque|narciso|valentino|givenchy|lancome|mugler|baccarat|black\s*opium|miss\s*dior|good\s*girl|chance|n[o°]?\s*5|parfums\s*de\s*marly|maison\s*francis|initio|xerjoff|kilian|penhaligon|roja|amouage|lattafa|rasasi|afnan|rayhaan|armaf|ajmal|al\s*haramain|swiss\s*arabian|ard\s*al\s*zaafaran|fragrance\s*world|arabian\s*oud|asdaaf|maison\s*alhambra|zimaya|surrati|dossier|oakcha|french\s*avenue|jo\s*milano|twist\s*heritage|club\s*de\s*nuit|alt\.?\s*fragrances?)\b/i;
+const FRAGRANCE_BRANDS_RE = /\b(abercrombie|abercrombie\s*&\s*fitch|acqua\s*di\s*parma|chanel|dior|ysl|saint\s*laurent|gucci|prada|tom\s*ford|jo\s*malone|maison\s*margiela|creed|byredo|le\s*labo|diptyque|narciso|valentino|givenchy|lancome|mugler|baccarat|black\s*opium|miss\s*dior|good\s*girl|chance|n[o°]?\s*5|parfums\s*de\s*marly|maison\s*francis|initio|xerjoff|kilian|penhaligon|roja|amouage|lattafa|rasasi|afnan|rayhaan|armaf|ajmal|al\s*haramain|swiss\s*arabian|ard\s*al\s*zaafaran|fragrance\s*world|arabian\s*oud|asdaaf|maison\s*alhambra|zimaya|surrati|dossier|oakcha|french\s*avenue|jo\s*milano|twist\s*heritage|club\s*de\s*nuit|alt\.?\s*fragrances?)\b/i;
 
 const BAG_RE = /\b(bag|purse|handbag|tote|clutch|crossbody|satchel|backpack|pouch|wallet)\b/i;
 const JEWELRY_RE = /\b(necklace|bracelet|ring|earring|jewelry|jewellery|pendant|bangle|anklet|brooch|charm)\b/i;
