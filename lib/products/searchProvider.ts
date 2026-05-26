@@ -386,7 +386,18 @@ export async function searchFragranceCommunityDupes(
         maxPrice,
       }).catch(() => [] as ProductResult[]),
     ]);
-    candidates = mergeUniqueProducts([...candidates, ...meHits, ...westernHits]);
+    // Backfill images: curated entries have no imageUrl — steal from matching shopping hits
+    const allHits = [...meHits, ...westernHits];
+    for (const c of candidates) {
+      if (c.imageUrl || !c.id.startsWith("fragrance-intel-")) continue;
+      const brandLower = c.brand.toLowerCase();
+      const hit = allHits.find(
+        (h) => h.imageUrl && (h.title.toLowerCase().includes(brandLower) || h.brand.toLowerCase().includes(brandLower))
+      );
+      if (hit) c.imageUrl = hit.imageUrl;
+    }
+
+    candidates = mergeUniqueProducts([...candidates, ...allHits]);
   }
 
   if (candidates.length >= 6) return candidates.slice(0, 10);

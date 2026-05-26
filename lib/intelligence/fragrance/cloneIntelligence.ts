@@ -256,7 +256,7 @@ export function fragranceCloneToProduct(entry: FragranceCloneIntelligence): Prod
     price,
     currency: "USD",
     productUrl: `https://www.google.com/search?q=${encodeURIComponent(`${entry.brand} ${entry.clone} fragrance`)}`,
-    imageUrl: `https://placehold.co/600x800/png?text=${encodeURIComponent(entry.clone)}`,
+    imageUrl: "",
     category: "fragrance",
     colors: [],
     sizes: ["full bottle"],
