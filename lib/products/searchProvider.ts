@@ -317,7 +317,7 @@ async function extractDupeNames(
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `From these community posts about ${category} dupes for "${sourceName}", extract specific product names (brand + product name) recommended as dupes or cheaper alternatives. ${hint} Return a JSON array of strings, max 5 names. Return [] if none found.\n\n${context}`,
+        content: `From these community posts about ${category} dupes for "${sourceName}", extract specific product names (brand + product name) recommended as dupes or cheaper alternatives. ${hint} Also look for French Avenue products (e.g. Liquid Brun) which are popular viral dupes. Return a JSON array of strings, max 5 names. Return [] if none found.\n\n${context}`,
       }],
     });
     const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
