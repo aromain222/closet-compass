@@ -11,10 +11,6 @@ interface SheetDupeEntry {
   clone: string;
   brand: string;
   original: string;
-  fidelity?: number;
-  persistenceHours?: number;
-  projection?: number;
-  price?: number;
   notes?: string;
 }
 
@@ -36,6 +32,25 @@ const BRAND_PRICE_ESTIMATES: Record<string, number> = {
   Zara: 35,
   Shobi: 28,
 };
+
+const MIDDLE_EASTERN_BRANDS = [
+  "Lattafa",
+  "Maison Alhambra",
+  "Afnan",
+  "Armaf",
+  "Rasasi",
+  "Rayhaan",
+  "Ajmal",
+  "Al Haramain",
+  "Swiss Arabian",
+  "Ard Al Zaafaran",
+  "Fragrance World",
+  "French Avenue",
+  "Arabian Oud",
+  "Asdaaf",
+  "Zimaya",
+  "Surrati",
+];
 
 function normalize(value: string): string {
   return value
@@ -113,19 +128,19 @@ function firstPresent(row: Record<string, string>, keys: string[]): string {
   return "";
 }
 
-function parseNumber(value: string): number | undefined {
-  const match = value.match(/\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : undefined;
+function isMiddleEasternBrand(brand: string): boolean {
+  const normalizedBrand = normalize(brand);
+  return MIDDLE_EASTERN_BRANDS.some((meBrand) => normalize(meBrand) === normalizedBrand);
 }
 
-function parseHours(value: string): number | undefined {
-  return parseNumber(value);
+function inferMiddleEasternBrand(text: string): string {
+  const normalizedText = ` ${normalize(text)} `;
+  return MIDDLE_EASTERN_BRANDS.find((brand) => normalizedText.includes(` ${normalize(brand)} `)) ?? "";
 }
 
-function normalizeFidelity(value: string): number | undefined {
-  const parsed = parseNumber(value);
-  if (!parsed) return undefined;
-  return parsed <= 1 ? Math.round(parsed * 100) : Math.min(100, parsed);
+function stripBrandPrefix(clone: string, brand: string): string {
+  const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return clone.replace(new RegExp(`^\\s*${escaped}\\s+`, "i"), "").trim() || clone;
 }
 
 function rowsToEntries(rows: string[][]): SheetDupeEntry[] {
@@ -137,16 +152,15 @@ function rowsToEntries(rows: string[][]): SheetDupeEntry[] {
     .map((cells): SheetDupeEntry | null => {
       const row = Object.fromEntries(headers.map((header, index) => [header, cells[index]?.trim() ?? ""]));
       const clone = firstPresent(row, ["clone", "dupe", "alternative", "perfume", "name", "fragrance"]);
-      const brand = firstPresent(row, ["brand", "clonebrand", "dupebrand", "house"]);
-      const original = firstPresent(row, ["original", "inspiredby", "inspiration", "source", "designer", "og"]);
-      const fidelity = normalizeFidelity(firstPresent(row, ["fidelity", "match", "similarity", "accuracy"]));
-      const persistenceHours = parseHours(firstPresent(row, ["persistence", "longevity", "lasting", "hours"]));
-      const projection = parseNumber(firstPresent(row, ["projection", "sillage", "performance"]));
-      const price = parseNumber(firstPresent(row, ["price", "cost", "estimatedprice"]));
       const notes = firstPresent(row, ["notes", "comments", "description", "take"]);
+      const brand =
+        firstPresent(row, ["brand", "clonebrand", "dupebrand", "house"]) ||
+        inferMiddleEasternBrand(clone) ||
+        inferMiddleEasternBrand(notes);
+      const original = firstPresent(row, ["original", "inspiredby", "inspiration", "source", "designer", "og"]);
 
       if (!clone || !brand || !original) return null;
-      return { clone, brand, original, fidelity, persistenceHours, projection, price, notes };
+      return { clone: stripBrandPrefix(clone, brand), brand, original, notes };
     })
     .filter((entry): entry is SheetDupeEntry => Boolean(entry));
 }
@@ -174,13 +188,10 @@ async function fetchSheetEntries(): Promise<SheetDupeEntry[]> {
 }
 
 function estimatedPrice(entry: SheetDupeEntry): number {
-  return entry.price ?? BRAND_PRICE_ESTIMATES[entry.brand] ?? 45;
+  return BRAND_PRICE_ESTIMATES[entry.brand] ?? 45;
 }
 
 function sheetEntryToProduct(entry: SheetDupeEntry): ProductResult {
-  const fidelity = entry.fidelity ?? 80;
-  const persistenceHours = entry.persistenceHours ?? 7;
-  const projection = entry.projection ?? 7;
   const price = estimatedPrice(entry);
 
   return {
@@ -208,9 +219,9 @@ function sheetEntryToProduct(entry: SheetDupeEntry): ProductResult {
     stretchScore: 0,
     breathabilityScore: 0,
     opacityScore: 0,
-    durabilityScore: Math.min(100, Math.round(persistenceHours * 10)),
+    durabilityScore: 70,
     careInstructions: [],
-    reviewSummary: `${fidelity}% fidelity to ${entry.original}; ${persistenceHours}h persistence; projection ${projection}/10.${entry.notes ? ` Sheet note: ${entry.notes}` : ""}`,
+    reviewSummary: `ME brand sheet match to ${entry.original}.${entry.notes ? ` Sheet note: ${entry.notes}` : ""}`,
     source: "manual",
     createdAt: "2026-05-25T00:00:00.000Z",
   };
@@ -231,7 +242,10 @@ export async function searchGoogleSheetFragranceDupes(
       ),
     }))
     .filter(({ entry, score }) => score >= 45 && estimatedPrice(entry) <= (maxPrice ?? Number.POSITIVE_INFINITY))
-    .sort((a, b) => b.score - a.score || (b.entry.fidelity ?? 0) - (a.entry.fidelity ?? 0))
+    .sort((a, b) => {
+      const meDelta = Number(isMiddleEasternBrand(b.entry.brand)) - Number(isMiddleEasternBrand(a.entry.brand));
+      return meDelta || b.score - a.score;
+    })
     .slice(0, 12)
     .map(({ entry }) => sheetEntryToProduct(entry));
 }

@@ -40,6 +40,7 @@ function parseFragranceIntelligence(candidate: ProductResult): {
   scentRating?: number;
   longevityRating?: number;
   sillageRating?: number;
+  middleEasternSheetMatch?: boolean;
 } {
   const summary = candidate.reviewSummary ?? "";
   const fidelity = summary.match(/(\d+(?:\.\d+)?)%\s+fidelity/i)?.[1];
@@ -56,6 +57,7 @@ function parseFragranceIntelligence(candidate: ProductResult): {
     scentRating: scentRating ? Number(scentRating) : undefined,
     longevityRating: longevityRating ? Number(longevityRating) : undefined,
     sillageRating: sillageRating ? Number(sillageRating) : undefined,
+    middleEasternSheetMatch: /ME brand sheet match to/i.test(summary),
   };
 }
 
@@ -68,6 +70,8 @@ function scoreFragranceQuality(candidate: ProductResult): number {
     const sillageScore = signals.sillageRating ? Math.round(signals.sillageRating * 10) : 60;
     return Math.min(100, Math.round(scentScore * 0.5 + longevityScore * 0.3 + sillageScore * 0.2));
   }
+
+  if (signals.middleEasternSheetMatch) return 78;
 
   if (!signals.fidelity) return scoreBrandReviewQuality(candidate);
 
@@ -204,6 +208,10 @@ export function generateDupeExplanation(input: {
       return `${alternativeProduct.title} is a Shobi catalog inspiration for ${sourceProduct.title}: the catalog lists ${signals.scentRating}/10 scent quality, ${longevity}, and ${sillage}, while saving ${input.priceSavings}%.`;
     }
 
+    if (signals.middleEasternSheetMatch) {
+      return `${alternativeProduct.title} is a Middle Eastern fragrance dupe from the shared sheet for ${sourceProduct.title}, saving ${input.priceSavings}%. ${alternativeProduct.reviewSummary ?? ""}`.trim();
+    }
+
     const review = alternativeProduct.reviewSummary ? ` ${alternativeProduct.reviewSummary}.` : "";
     return `${alternativeProduct.title} is an affordable fragrance alternative that saves ${input.priceSavings}% vs. ${sourceProduct.title}.${review}`;
   }
@@ -260,11 +268,15 @@ export function calculateDupeScore(
     ? fragranceSignals.fidelity
     : category === "fragrance" && fragranceSignals.scentRating
       ? Math.min(88, Math.round(fragranceSignals.scentRating * 10))
+    : category === "fragrance" && fragranceSignals.middleEasternSheetMatch
+      ? 82
     : material.score;
   const materialExplanation = category === "fragrance" && fragranceSignals.fidelity
     ? `Fragrance match is based on curated scent fidelity: ${fragranceSignals.fidelity}% similarity, ${fragranceSignals.persistenceHours ?? "unknown"}h persistence, and ${fragranceSignals.projection ?? "unknown"}/10 projection.`
     : category === "fragrance" && fragranceSignals.scentRating
       ? `Fragrance match is based on Shobi inspiration catalog ratings: ${fragranceSignals.scentRating}/10 scent quality, ${fragranceSignals.longevityRating ?? "unknown"}/10 longevity, and ${fragranceSignals.sillageRating ?? "unknown"}/10 sillage.`
+    : category === "fragrance" && fragranceSignals.middleEasternSheetMatch
+      ? "Fragrance match is based on a shared sheet listing this Middle Eastern brand fragrance as a dupe for the source scent."
     : material.explanation;
   const visualSimilarity = scoreVisualPlaceholder(sourceProduct, alternativeProduct);
   const fitSimilarity = scoreFitSimilarity(sourceProduct, alternativeProduct);
@@ -278,6 +290,8 @@ export function calculateDupeScore(
     ? Math.min(100, Math.round(50 + fragranceSignals.fidelity * 0.5))
     : category === "fragrance" && fragranceSignals.scentRating
       ? Math.min(88, Math.round(45 + fragranceSignals.scentRating * 5))
+    : category === "fragrance" && fragranceSignals.middleEasternSheetMatch
+      ? 78
     : Math.round(((sourceProduct.materialConfidence + alternativeProduct.materialConfidence) / 2) * 100);
   const recommendation = generateDupeLabel({
     visualSimilarity,
