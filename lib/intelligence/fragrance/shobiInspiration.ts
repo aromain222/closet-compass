@@ -119,11 +119,13 @@ function shobiPerfumeToProduct(perfume: ShobiPerfume): ProductResult {
     ...(perfume.notes?.base ?? []),
   ].slice(0, 10);
 
+  const brandName = perfume.brand || "Le Parfum";
+
   return {
     id: `shobi-${normalize(perfume.code).replace(/\s+/g, "-")}`,
-    title: `Shobi inspiration: ${perfume.brand} ${perfume.inspiredBy}`,
-    brand: "Shobi",
-    retailer: "Shobi / Le Parfum",
+    title: `Inspired by ${perfume.inspiredBy}`,
+    brand: brandName,
+    retailer: "Le Parfum",
     price: SHOBI_ESTIMATED_PRICE,
     currency: "USD",
     productUrl: shobiUrl(perfume.code),
@@ -147,7 +149,7 @@ function shobiPerfumeToProduct(perfume: ShobiPerfume): ProductResult {
     opacityScore: 0,
     durabilityScore: ratings.longevity ? Math.min(100, Math.round(ratings.longevity * 10)) : 60,
     careInstructions: [],
-    reviewSummary: `Shobi code ${perfume.code}; inspired by ${perfume.brand} ${perfume.inspiredBy}; scent rating ${ratings.scent ?? "unknown"}/10; longevity ${ratings.longevity ?? "unknown"}/10; sillage ${ratings.sillage ?? "unknown"}/10; accords ${accords.join(", ") || "unknown"}.`,
+    reviewSummary: `scent rating ${ratings.scent ?? "unknown"}/10; longevity ${ratings.longevity ?? "unknown"}/10; sillage ${ratings.sillage ?? "unknown"}/10; accords ${accords.join(", ") || "unknown"}.`,
     source: "manual",
     createdAt: "2026-05-25T00:00:00.000Z",
   };

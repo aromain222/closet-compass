@@ -317,6 +317,14 @@ async function scrapeRedditSnippets(
 
 /* ── Fragrance community dupe search ── */
 
+// Strip generic product description words that pollute fragrance search queries
+function cleanFragranceName(name: string): string {
+  return name
+    .replace(/\b(eau\s+de\s+(parfum|toilette|cologne)|edt|edp|vaporisateur|spray|pour\s+(homme|femme|elle)|men'?s|women'?s|unisex|\d+\s*ml)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Middle Eastern + popular western dupe brands surfaced by community searches
 const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud, Asdaaf, Maison Alhambra, Zimaya, Surrati, Paris Corner, Emper, Pendora, Riiffss";
 const WESTERN_DUPE_BRANDS = "Dossier, Oakcha, ALT. Fragrances, French Avenue, Jo Milano Paris, Twist Heritage, Club de Nuit, Inspired by Glamour, Zara, GENERIC Impression";
@@ -355,41 +363,38 @@ export async function searchFragranceCommunityDupes(
   maxPrice: number | undefined
 ): Promise<ProductResult[]> {
   const env = getServerEnv();
+  const cleanedName = cleanFragranceName(sourceName);
+
   const curatedResults = findCuratedFragranceClones(sourceName, maxPrice).map(fragranceCloneToProduct);
   const [sheetResults, shobiResults] = await Promise.all([
     searchGoogleSheetFragranceDupes(sourceName, maxPrice),
     searchShobiInspirations(sourceName, maxPrice),
   ]);
-  const offlineResults = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
+  let candidates = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
 
-  // Always supplement with a live ME brand shopping search so female fragrances
-  // not yet in the curated database still surface Lattafa/Afnan/Armaf/Maison Alhambra hits
-  if (env.serperApiKey && offlineResults.length < 5) {
-    try {
-      const meHits = await searchSerper({
-        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal OR "Paris Corner" OR Emper`,
-        maxPrice,
-      });
-      const merged = mergeUniqueProducts([...offlineResults, ...meHits]);
-      if (merged.length > 0) return merged.slice(0, 10);
-    } catch { /* fall through */ }
+  if (!env.serperApiKey) return candidates.slice(0, 10);
+
+  // Supplement with ME brand shopping search when results are sparse
+  if (candidates.length < 5) {
+    const meHits = await searchSerper({
+      query: `"${cleanedName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal OR "Paris Corner" OR Emper`,
+      maxPrice,
+    }).catch(() => [] as ProductResult[]);
+    candidates = mergeUniqueProducts([...candidates, ...meHits]);
   }
 
-  if (offlineResults.length > 0) return offlineResults.slice(0, 10);
-  if (!env.serperApiKey) return [];
+  if (candidates.length >= 5) return candidates.slice(0, 10);
 
-  const webQuery = `best "${sourceName}" dupe clone alternative fragrance`;
-
-  // Step 1: Web search + Reddit in parallel to find community-recommended dupe names
+  // Web + Reddit search when still sparse — extracts community-recommended dupe names
   let dupeNames: string[] = [];
   try {
     const [webRes, redditSnippets] = await Promise.all([
       fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: webQuery, gl: "us", num: 8 }),
+        body: JSON.stringify({ q: `best "${cleanedName}" dupe clone alternative fragrance`, gl: "us", num: 8 }),
       }),
-      scrapeRedditSnippets(sourceName, SUBREDDITS.fragrance),
+      scrapeRedditSnippets(cleanedName, SUBREDDITS.fragrance),
     ]);
 
     const organic: Array<{ title?: string; snippet?: string }> = webRes.ok
@@ -398,27 +403,28 @@ export async function searchFragranceCommunityDupes(
 
     const allSnippets = [...redditSnippets, ...organic];
     if (env.anthropicApiKey && allSnippets.length > 0) {
-      dupeNames = await extractDupeNames(allSnippets, sourceName, "fragrance", env.anthropicApiKey);
+      dupeNames = await extractDupeNames(allSnippets, cleanedName, "fragrance", env.anthropicApiKey);
     }
   } catch (err) {
     console.error("[Fragrance] community search error:", err);
   }
 
-  // Fallback: broad dupe brand shopping search
   if (dupeNames.length === 0) {
-    return searchSerper({ query: `Lattafa OR Rasasi OR Dossier OR Oakcha OR Armaf "${sourceName}" dupe`, maxPrice });
+    const broadHits = await searchSerper({
+      query: `Lattafa OR Rasasi OR Dossier OR Oakcha OR Armaf "${cleanedName}" dupe`,
+      maxPrice,
+    }).catch(() => [] as ProductResult[]);
+    return mergeUniqueProducts([...candidates, ...broadHits]).slice(0, 10);
   }
 
-  // Step 2: Search shopping for each community-recommended dupe
-  const results: ProductResult[] = [];
-  const seen = new Set<string>();
+  // Search shopping for each community-recommended dupe name
+  const seen = new Set<string>(candidates.map((c) => c.id));
+  const results: ProductResult[] = [...candidates];
   for (const name of dupeNames.slice(0, 4)) {
-    try {
-      const hits = await searchSerper({ query: name, maxPrice });
-      for (const h of hits) {
-        if (!seen.has(h.id) && h.price > 0) { seen.add(h.id); results.push(h); }
-      }
-    } catch { /* skip */ }
+    const hits = await searchSerper({ query: name, maxPrice }).catch(() => [] as ProductResult[]);
+    for (const h of hits) {
+      if (!seen.has(h.id) && h.price > 0) { seen.add(h.id); results.push(h); }
+    }
   }
   return results.slice(0, 10);
 }

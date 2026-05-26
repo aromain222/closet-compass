@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { ExternalLink, Heart, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
-import type { DupeComparison, DupeRecommendationLabel } from "@/lib/products/types";
+import type { DupeComparison, DupeRecommendationLabel, ProductResult } from "@/lib/products/types";
+import type { DupeCategory } from "@/lib/dupes/categoryDetect";
 import { Badge } from "@/components/ui/badge";
 import { ScoreBar } from "./MaterialBadge";
 import { Button } from "@/components/ui/button";
@@ -271,5 +272,113 @@ export function DupeCard({ comparison, onSelect, onWishlist, wishlisted = false 
         )}
       </div>
     </article>
+  );
+}
+
+/* ──────────────────────────────────────────── */
+/*  CompareSection — horizontal scroll strip   */
+/* ──────────────────────────────────────────── */
+
+const SIG_LABEL: Record<DupeCategory, string> = {
+  fragrance: "Fidelity",
+  jewelry:   "Tarnish",
+  clothing:  "Material",
+  bag:       "Material",
+};
+
+function ScorePill({ value, color }: { value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex-1 h-1 bg-petal rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="text-[9px] tabular-nums text-muted w-5 text-right">{value}</span>
+    </div>
+  );
+}
+
+export function CompareSection({
+  sourceProduct,
+  dupes,
+  category,
+}: {
+  sourceProduct: ProductResult;
+  dupes: DupeComparison[];
+  category: DupeCategory;
+}) {
+  if (dupes.length === 0) return null;
+  const sigLabel = SIG_LABEL[category];
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] text-muted uppercase tracking-wider font-medium">Compare all</p>
+      <div className="overflow-x-auto -mx-4 px-4 pb-1">
+        <div className="flex gap-2.5" style={{ minWidth: "max-content" }}>
+
+          {/* Original column */}
+          <div className="w-[108px] shrink-0 rounded-2xl border-2 border-soft bg-petal/50 overflow-hidden flex flex-col">
+            <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
+              {sourceProduct.imageUrl && (
+                <Image src={sourceProduct.imageUrl} alt={sourceProduct.title} fill sizes="108px" className="object-cover" unoptimized />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-warm-dark/40 to-transparent" />
+              <span className="absolute bottom-1.5 left-0 right-0 text-center text-[9px] font-semibold text-white tracking-wide uppercase">Original</span>
+            </div>
+            <div className="p-2 flex flex-col gap-1.5 flex-1">
+              <p className="text-[9px] text-muted uppercase tracking-wider leading-none truncate">{sourceProduct.brand}</p>
+              <p className="text-xs font-semibold text-warm-dark">${sourceProduct.price}</p>
+              <div className="space-y-0.5 mt-auto">
+                <p className="text-[9px] text-muted">{sigLabel}</p>
+                <div className="h-1 bg-petal/80 rounded-full" />
+                <p className="text-[9px] text-muted mt-1">Score</p>
+                <div className="h-1 bg-petal/80 rounded-full" />
+              </div>
+            </div>
+          </div>
+
+          {/* Dupe columns */}
+          {dupes.map((c) => {
+            const alt = c.alternativeProduct;
+            const { score } = c;
+            const cfg = REC[score.recommendation] ?? REC.consider;
+            const saving = sourceProduct.price - alt.price;
+            const savingPct = saving > 0 ? Math.round((saving / sourceProduct.price) * 100) : 0;
+            return (
+              <div
+                key={alt.id}
+                className={`w-[108px] shrink-0 rounded-2xl border-2 bg-card overflow-hidden flex flex-col ${
+                  score.recommendation === "strong_dupe" ? "border-green-300" : "border-soft"
+                }`}
+              >
+                <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
+                  {alt.imageUrl && (
+                    <Image src={alt.imageUrl} alt={alt.title} fill sizes="108px" className="object-cover" unoptimized />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-warm-dark/50 to-transparent" />
+                  <div className="absolute bottom-1.5 left-0 right-0 flex justify-center px-1">
+                    <Badge variant={cfg.badge} className="text-[9px] max-w-full truncate">{cfg.label}</Badge>
+                  </div>
+                </div>
+                <div className="p-2 flex flex-col gap-1 flex-1">
+                  <p className="text-[9px] text-muted uppercase tracking-wider leading-none truncate">{alt.brand}</p>
+                  <div className="flex items-baseline gap-1 flex-wrap">
+                    <p className="text-xs font-semibold text-warm-dark">${alt.price}</p>
+                    {saving > 0 && (
+                      <span className="text-[9px] font-semibold text-green-700">−{savingPct}%</span>
+                    )}
+                  </div>
+                  <div className="space-y-0.5 mt-auto">
+                    <p className="text-[9px] text-muted">{sigLabel}</p>
+                    <ScorePill value={score.materialSimilarity} color="bg-lavender" />
+                    <p className="text-[9px] text-muted mt-1">Score</p>
+                    <ScorePill value={score.finalDupeScore} color="bg-blush" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

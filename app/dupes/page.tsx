@@ -4,8 +4,8 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Shuffle, Search as SearchIcon, Link2, Heart, ExternalLink } from "lucide-react";
-import { detectDupeCategory } from "@/lib/dupes/categoryDetect";
-import { DupeCard } from "@/components/product/DupeCard";
+import { detectDupeCategory, type DupeCategory } from "@/lib/dupes/categoryDetect";
+import { DupeCard, CompareSection } from "@/components/product/DupeCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DupeComparisonModal } from "@/components/product/DupeComparisonModal";
 import { ProductModal } from "@/components/product/ProductModal";
@@ -211,6 +211,7 @@ function DupesContent() {
   const [searchResults, setSearchResults] = useState<ProductResult[]>([]);
   const [sourceProduct, setSourceProduct] = useState<ProductResult | null>(null);
   const [dupes, setDupes] = useState<DupeComparison[]>([]);
+  const [category, setCategory] = useState<DupeCategory>("clothing");
   const [agentSummary, setAgentSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -244,6 +245,7 @@ function DupesContent() {
     try {
       const res = await api.findDupes({ productId: id, maxPrice: maxPrice ? Number(maxPrice) : undefined });
       setSourceProduct(res.sourceProduct);
+      setCategory(detectDupeCategory(res.sourceProduct.title));
       setDupes(res.alternatives);
       setAgentSummary(res.agentSummary);
       setStep("dupes");
@@ -255,6 +257,7 @@ function DupesContent() {
 
   const findDupesForProduct = useCallback(async (product: ProductResult) => {
     setSourceProduct(product);
+    setCategory(detectDupeCategory(product.title));
     setStep("searching");
     setError(null);
     try {
@@ -500,6 +503,14 @@ function DupesContent() {
 
           {agentSummary && (
             <p className="text-xs text-muted italic border-l-2 border-blush/40 pl-3">{agentSummary}</p>
+          )}
+
+          {dupes.length > 1 && (
+            <CompareSection
+              sourceProduct={sourceProduct}
+              dupes={dupes}
+              category={category}
+            />
           )}
 
           {dupes.length === 0 ? (

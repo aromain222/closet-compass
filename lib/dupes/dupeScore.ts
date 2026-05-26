@@ -219,7 +219,7 @@ export function generateDupeExplanation(input: {
     if (signals.scentRating) {
       const longevity = signals.longevityRating ? `${signals.longevityRating}/10 longevity` : "unverified longevity";
       const sillage = signals.sillageRating ? `${signals.sillageRating}/10 sillage` : "unverified sillage";
-      return `${alternativeProduct.title} is a Shobi catalog inspiration for ${sourceProduct.title}: the catalog lists ${signals.scentRating}/10 scent quality, ${longevity}, and ${sillage}, while saving ${input.priceSavings}%.`;
+      return `${alternativeProduct.title} is an inspired-by fragrance for ${sourceProduct.title}, rated ${signals.scentRating}/10 scent quality, ${longevity}, and ${sillage} — saving ${input.priceSavings}%.`;
     }
 
     if (signals.middleEasternSheetMatch) {
@@ -299,7 +299,7 @@ export function calculateDupeScore(
     : category === "fragrance" && fragranceSignals.fidelity
     ? `Fragrance match is based on curated scent fidelity: ${fragranceSignals.fidelity}% similarity, ${fragranceSignals.persistenceHours ?? "unknown"}h persistence, and ${fragranceSignals.projection ?? "unknown"}/10 projection.`
     : category === "fragrance" && fragranceSignals.scentRating
-      ? `Fragrance match is based on Shobi inspiration catalog ratings: ${fragranceSignals.scentRating}/10 scent quality, ${fragranceSignals.longevityRating ?? "unknown"}/10 longevity, and ${fragranceSignals.sillageRating ?? "unknown"}/10 sillage.`
+      ? `Fragrance match based on catalog ratings: ${fragranceSignals.scentRating}/10 scent quality, ${fragranceSignals.longevityRating ?? "unknown"}/10 longevity, and ${fragranceSignals.sillageRating ?? "unknown"}/10 sillage.`
     : category === "fragrance" && fragranceSignals.middleEasternSheetMatch
       ? "Fragrance match is based on a shared sheet listing this Middle Eastern brand fragrance as a dupe for the source scent."
     : material.explanation;
