@@ -284,19 +284,17 @@ function DupesContent() {
         setSearchError("Nothing matched. Try a broader description — like \"silk skirt\" or \"cashmere cardigan\".");
         return;
       }
-      if (res.products.length === 1) {
-        // Only one match — skip the pick step and go straight to dupes
-        await findDupesForProduct(res.products[0]);
-        return;
-      }
+      // Filter samples/non-fragrance items before auto-selecting
       const category = detectDupeCategory(query);
       const SMALL_RE = /\b(vial|sample|decant|tester|room\s*spray|travel\s*size|mini\s*spray|\d+\s*ml\s*x\s*\d+|\d+\.\d+\s*ml)\b/i;
       const FRAG_PRODUCT_RE = /\b(parfums?|perfumes?|fragrance|cologne|eau\s*de|edt|edp|toilette|scent)\b/i;
       const filtered = category === "fragrance"
         ? res.products.filter((p) => !SMALL_RE.test(p.title) && FRAG_PRODUCT_RE.test(p.title))
         : res.products;
-      setSearchResults(filtered.length > 0 ? filtered : res.products);
-      setStep("results");
+      const candidates = filtered.length > 0 ? filtered : res.products;
+
+      // Always auto-select the top result and go straight to dupes
+      await findDupesForProduct(candidates[0]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed");
       setStep("error");
