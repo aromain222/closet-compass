@@ -318,7 +318,7 @@ async function scrapeRedditSnippets(
 /* ── Fragrance community dupe search ── */
 
 // Middle Eastern + popular western dupe brands surfaced by community searches
-const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud, Asdaaf, Maison Alhambra, Zimaya, Surrati";
+const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud, Asdaaf, Maison Alhambra, Zimaya, Surrati, Paris Corner, Emper, Pendora, Riiffss";
 const WESTERN_DUPE_BRANDS = "Dossier, Oakcha, ALT. Fragrances, French Avenue, Jo Milano Paris, Twist Heritage, Club de Nuit, Inspired by Glamour, Zara, GENERIC Impression";
 
 async function extractDupeNames(
@@ -367,7 +367,7 @@ export async function searchFragranceCommunityDupes(
   if (env.serperApiKey && offlineResults.length < 5) {
     try {
       const meHits = await searchSerper({
-        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal dupe`,
+        query: `"${sourceName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal OR "Paris Corner" OR Emper dupe`,
         maxPrice,
       });
       const merged = mergeUniqueProducts([...offlineResults, ...meHits]);
