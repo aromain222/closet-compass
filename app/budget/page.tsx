@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PlaidConnectPrompt } from "@/components/budget/PlaidConnectPrompt";
 import { MoneyDashboard } from "@/components/budget/MoneyDashboard";
 import { RecommendationCard } from "@/components/budget/RecommendationCard";
+import { CategoryBudgets } from "@/components/budget/CategoryBudgets";
 import { api } from "@/lib/api/client";
 import { useUser } from "@/lib/context/user";
 import {
@@ -119,6 +120,10 @@ export default function BudgetPage() {
           <PlaidConnectPrompt onConnect={() => router.push("/settings")} />
         </div>
       )}
+
+      <div className="mt-6">
+        <CategoryBudgets categories={dashboardData.categoryBreakdown} />
+      </div>
 
       {recommendations.length > 0 && (
         <div className="mt-8 space-y-4">
