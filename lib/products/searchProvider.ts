@@ -4,6 +4,7 @@ import {
   findCuratedFragranceClones,
   fragranceCloneToProduct,
 } from "@/lib/intelligence/fragrance/cloneIntelligence";
+import { searchGoogleSheetFragranceDupes } from "@/lib/intelligence/fragrance/googleSheetDupes";
 import { searchShobiInspirations } from "@/lib/intelligence/fragrance/shobiInspiration";
 import { getServerEnv } from "@/lib/utils/env";
 
@@ -355,8 +356,11 @@ export async function searchFragranceCommunityDupes(
 ): Promise<ProductResult[]> {
   const env = getServerEnv();
   const curatedResults = findCuratedFragranceClones(sourceName, maxPrice).map(fragranceCloneToProduct);
-  const shobiResults = await searchShobiInspirations(sourceName, maxPrice);
-  const offlineResults = mergeUniqueProducts([...curatedResults, ...shobiResults]);
+  const [sheetResults, shobiResults] = await Promise.all([
+    searchGoogleSheetFragranceDupes(sourceName, maxPrice),
+    searchShobiInspirations(sourceName, maxPrice),
+  ]);
+  const offlineResults = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
   if (offlineResults.length > 0) return offlineResults.slice(0, 10);
   if (!env.serperApiKey) return [];
 
