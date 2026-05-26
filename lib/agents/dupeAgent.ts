@@ -1,7 +1,7 @@
 import type { DupeComparison, ProductResult } from "@/lib/products/types";
 import { createDupeComparison } from "@/lib/dupes/dupeScore";
 import { detectDupeCategory, type DupeCategory } from "@/lib/dupes/categoryDetect";
-import { getProductSearchProvider, searchFragranceCommunityDupes, searchCategoryDupes } from "@/lib/products/searchProvider";
+import { getProductSearchProvider, searchFragranceCommunityDupes, searchCategoryDupes, enrichSourceProductMaterials } from "@/lib/products/searchProvider";
 
 interface DupeAgentInput {
   sourceProduct: ProductResult;
@@ -75,20 +75,23 @@ function isFragranceSample(candidate: ProductResult): boolean {
   return SAMPLE_RE.test(candidate.title);
 }
 
-export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons: DupeComparison[]; category: DupeCategory }> {
+export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons: DupeComparison[]; category: DupeCategory; sourceProduct: ProductResult }> {
   const category = detectDupeCategory(input.sourceProduct.title);
+
+  // Enrich source product with web-fetched fabric specs if shopping API returned no material data
+  const sourceProduct = await enrichSourceProductMaterials(input.sourceProduct);
 
   let candidates: ProductResult[];
   if (category === "fragrance") {
-    candidates = await searchFragranceCommunityDupes(input.sourceProduct.title, input.maxPrice);
+    candidates = await searchFragranceCommunityDupes(sourceProduct.title, input.maxPrice);
   } else {
     const provider = getProductSearchProvider();
-    const query = buildDupeQuery(input.sourceProduct, category);
-    const sourceFibers = input.sourceProduct.normalizedMaterials.map((m) => m.fiber)
-      .concat(input.sourceProduct.listedMaterials)
+    const query = buildDupeQuery(sourceProduct, category);
+    const sourceFibers = sourceProduct.normalizedMaterials.map((m) => m.fiber)
+      .concat(sourceProduct.listedMaterials)
       .filter((f) => f.length >= 3);
     const preferred = [...new Set([...(input.preferredMaterials ?? []), ...sourceFibers])];
-    const maxPrice = input.maxPrice ?? input.sourceProduct.price - 1;
+    const maxPrice = input.maxPrice ?? sourceProduct.price - 1;
 
     const [shoppingResults, communityResults] = await Promise.all([
       provider.search({
@@ -97,7 +100,7 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
         preferredMaterials: preferred.length > 0 ? preferred : undefined,
         avoidMaterials: input.avoidMaterials,
       }),
-      searchCategoryDupes(input.sourceProduct.title, category as "clothing" | "bag" | "jewelry", maxPrice),
+      searchCategoryDupes(sourceProduct.title, category as "clothing" | "bag" | "jewelry", maxPrice),
     ]);
 
     // Merge: community picks first, shopping fills remaining slots
@@ -108,18 +111,18 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
     }
   }
 
-  const sourceBrand = input.sourceProduct.brand.toLowerCase();
-  const sourceRetailer = input.sourceProduct.retailer.toLowerCase();
+  const sourceBrand = sourceProduct.brand.toLowerCase();
+  const sourceRetailer = sourceProduct.retailer.toLowerCase();
 
   const comparisons = candidates
-    .filter((c) => c.id !== input.sourceProduct.id)
-    .filter((c) => c.price > 0 && c.price < input.sourceProduct.price)
+    .filter((c) => c.id !== sourceProduct.id)
+    .filter((c) => c.price > 0 && c.price < sourceProduct.price)
     .filter((c) => !isSameBrand(c, sourceBrand, category))
     .filter((c) => c.retailer.toLowerCase() !== sourceRetailer)
     .filter((c) => category !== "fragrance" || !isFragranceSample(c))
-    .map((c) => createDupeComparison(input.sourceProduct, c, category))
+    .map((c) => createDupeComparison(sourceProduct, c, category))
     .sort((a, b) => b.score.finalDupeScore - a.score.finalDupeScore)
     .slice(0, input.limit ?? 8);
 
-  return { comparisons, category };
+  return { comparisons, category, sourceProduct };
 }

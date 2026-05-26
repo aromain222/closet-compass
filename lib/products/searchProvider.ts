@@ -7,6 +7,7 @@ import {
 import { searchGoogleSheetFragranceDupes } from "@/lib/intelligence/fragrance/googleSheetDupes";
 import { searchShobiInspirations } from "@/lib/intelligence/fragrance/shobiInspiration";
 import { getServerEnv } from "@/lib/utils/env";
+import { detectDupeCategory } from "@/lib/dupes/categoryDetect";
 
 export interface ProductSearchProvider {
   search(input: ProductSearchInput): Promise<ProductResult[]>;
@@ -522,4 +523,42 @@ export function getProductSearchProvider(): ProductSearchProvider {
   }
 
   return { search: searchFn, getById };
+}
+
+/* ── Source product material enrichment via web search ── */
+
+// When the source product has no material data (confidence < 0.3), fetch
+// fabric/composition specs from a web search and re-run Claude enrichment.
+// Only applies to clothing and bags — fragrance/jewelry don't need fiber data.
+export async function enrichSourceProductMaterials(product: ProductResult): Promise<ProductResult> {
+  const env = getServerEnv();
+  if (!env.anthropicApiKey || !env.serperApiKey) return product;
+  if (product.materialConfidence >= 0.3) return product;
+
+  const category = detectDupeCategory(product.title);
+  if (category !== "clothing" && category !== "bag") return product;
+
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": env.serperApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q: `${product.brand} ${product.title} fabric material composition`,
+        gl: "us",
+        num: 3,
+      }),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return product;
+
+    const json = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const snippets = (json.organic ?? []).slice(0, 3).map((r: any) => r.snippet ?? "").filter(Boolean).join(" ");
+    if (!snippets) return product;
+
+    const [enriched] = await enrichProducts([{ ...product, description: snippets }], env.anthropicApiKey);
+    return enriched ?? product;
+  } catch {
+    return product;
+  }
 }

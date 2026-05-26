@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       throw new ApiError(404, "product_not_found", "Could not find the source product.");
     }
 
-    const { comparisons, category } = await runDupeAgent({
+    const { comparisons, category, sourceProduct: enrichedSource } = await runDupeAgent({
       sourceProduct,
       maxPrice: input.maxPrice,
       preferredMaterials: input.preferredMaterials,
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({
-      sourceProduct,
+      sourceProduct: enrichedSource,
       alternatives: typedComparisons,
       agentSummary: summaryByCategory[category] ?? summaryByCategory.clothing,
     });
