@@ -163,6 +163,9 @@ Lueur D'espoir Ambre|French Avenue|Grand Soir style|90|9|8.5
 Rayhaan Rouge|Rayhaan|Baccarat Rouge 540 style|88|9|8.5
 Rayhaan Gold|Rayhaan|1 Million Elixir vibe|85|8|8
 Rayhaan Oud|Rayhaan|Oud niche blend|85|9|8
+Blue Fate|ALT. Fragrances|Ex Nihilo Blue Talisman|95|8|8.5
+The Blu Talassim|Alexandria Fragrances|Ex Nihilo Blue Talisman|90|9|8.5
+Blue Spell|Yom & Layl|Ex Nihilo Blue Talisman|88|8|8
 `.trim();
 
 export const fragranceCloneIntelligence: FragranceCloneIntelligence[] = RAW_FRAGRANCE_CLONES
@@ -189,6 +192,11 @@ const BRAND_PRICE_ESTIMATES: Record<string, number> = {
   Ajmal: 42,
   "Fragrance World": 45,
   "Al Haramain": 55,
+  "ALT. Fragrances": 49,
+  "Alexandria Fragrances": 55,
+  "Yom & Layl": 40,
+  Dossier: 29,
+  Oakcha: 55,
 };
 
 function normalize(value: string): string {
