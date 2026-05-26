@@ -29,6 +29,20 @@ export function scorePriceSavings(source: ProductResult, candidate: ProductResul
   return Math.round(Math.min(100, ((source.price - candidate.price) / source.price) * 100));
 }
 
+// Higher = less tarnish. Scans title + description for material signals.
+function scoreJewelryTarnishResistance(product: ProductResult): number {
+  const text = `${product.title} ${product.description}`.toLowerCase();
+  if (/\b(solid\s*gold|14k|18k|24k|platinum|palladium)\b/.test(text)) return 95;
+  if (/\btitanium\b/.test(text)) return 90;
+  if (/\bstainless\s*steel\b/.test(text)) return 85;
+  if (/\b(sterling|925|solid\s*silver)\b/.test(text)) return 70;
+  if (/\bgold[- ]?filled\b/.test(text)) return 65;
+  if (/\b(gold[- ]?plat|vermeil)\b/.test(text)) return 45;
+  if (/\b(silver[- ]?plat)\b/.test(text)) return 38;
+  if (/\b(brass|copper|alloy|zinc)\b/.test(text)) return 25;
+  return 50; // unknown — neutral
+}
+
 function scoreBrandReviewQuality(candidate: ProductResult): number {
   return Math.round(scoreMaterialQuality(candidate) * 0.6 + (candidate.reviewSummary ? 82 : 55) * 0.4);
 }
@@ -218,7 +232,7 @@ export function generateDupeExplanation(input: {
 
   if (category === "jewelry") {
     const review = alternativeProduct.reviewSummary ? ` Reviews: ${alternativeProduct.reviewSummary}.` : "";
-    return `Similar style, ${input.priceSavings}% cheaper — sourced from ${alternativeProduct.retailer}.${review}`;
+    return `Similar style, ${input.priceSavings}% cheaper. ${input.materialExplanation}${review}`;
   }
 
   const intro =
@@ -250,7 +264,7 @@ export function generateDupeExplanation(input: {
 const CATEGORY_WEIGHTS: Record<DupeCategory, [number, number, number, number, number, number]> = {
   //                    material  visual  fit   price review confidence
   clothing: [0.55,    0.10,   0.10, 0.15, 0.05, 0.05],
-  jewelry:  [0.00,    0.55,   0.00, 0.35, 0.05, 0.05],
+  jewelry:  [0.35,    0.30,   0.00, 0.28, 0.05, 0.02], // material = tarnish resistance
   bag:      [0.25,    0.30,   0.05, 0.30, 0.05, 0.05],
   fragrance:[0.55,    0.00,   0.00, 0.25, 0.15, 0.05],
 };
@@ -264,14 +278,25 @@ export function calculateDupeScore(
   const fragranceSignals = category === "fragrance"
     ? parseFragranceIntelligence(alternativeProduct)
     : {};
-  const materialSimilarity = category === "fragrance" && fragranceSignals.fidelity
+  const tarnishScore = category === "jewelry" ? scoreJewelryTarnishResistance(alternativeProduct) : 0;
+  const materialSimilarity = category === "jewelry"
+    ? tarnishScore
+    : category === "fragrance" && fragranceSignals.fidelity
     ? fragranceSignals.fidelity
     : category === "fragrance" && fragranceSignals.scentRating
       ? Math.min(88, Math.round(fragranceSignals.scentRating * 10))
     : category === "fragrance" && fragranceSignals.middleEasternSheetMatch
       ? 82
     : material.score;
-  const materialExplanation = category === "fragrance" && fragranceSignals.fidelity
+  const materialExplanation = category === "jewelry"
+    ? tarnishScore >= 80
+      ? "Tarnish resistance: high — stainless steel, titanium, or solid gold construction."
+      : tarnishScore >= 60
+        ? "Tarnish resistance: moderate — sterling silver or gold-filled."
+        : tarnishScore >= 40
+          ? "Tarnish resistance: low — plated metal that may tarnish over time."
+          : "Tarnish resistance: poor — brass, copper, or alloy base."
+    : category === "fragrance" && fragranceSignals.fidelity
     ? `Fragrance match is based on curated scent fidelity: ${fragranceSignals.fidelity}% similarity, ${fragranceSignals.persistenceHours ?? "unknown"}h persistence, and ${fragranceSignals.projection ?? "unknown"}/10 projection.`
     : category === "fragrance" && fragranceSignals.scentRating
       ? `Fragrance match is based on Shobi inspiration catalog ratings: ${fragranceSignals.scentRating}/10 scent quality, ${fragranceSignals.longevityRating ?? "unknown"}/10 longevity, and ${fragranceSignals.sillageRating ?? "unknown"}/10 sillage.`
