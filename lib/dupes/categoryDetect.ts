@@ -1,9 +1,9 @@
 export type DupeCategory = "clothing" | "jewelry" | "bag" | "fragrance";
 
-const FRAGRANCE_KEYWORDS_RE = /\b(perfume|fragrance|cologne|eau\s*de|edt|edp|scent|parfum|mist|toilette)\b/i;
+const FRAGRANCE_KEYWORDS_RE = /\b(perfumes?|fragrance|cologne|eau\s*de|edt|edp|scent|parfums?|mist|toilette)\b/i;
 
 // Well-known fragrance house names — when these appear alone (no bag/jewelry/clothing context) treat as fragrance
-const FRAGRANCE_BRANDS_RE = /\b(chanel|dior|ysl|saint\s*laurent|gucci|prada|tom\s*ford|jo\s*malone|maison\s*margiela|creed|byredo|le\s*labo|diptyque|narciso|valentino|givenchy|lancome|mugler|baccarat|black\s*opium|miss\s*dior|good\s*girl|chance|n[o°]?\s*5)\b/i;
+const FRAGRANCE_BRANDS_RE = /\b(chanel|dior|ysl|saint\s*laurent|gucci|prada|tom\s*ford|jo\s*malone|maison\s*margiela|creed|byredo|le\s*labo|diptyque|narciso|valentino|givenchy|lancome|mugler|baccarat|black\s*opium|miss\s*dior|good\s*girl|chance|n[o°]?\s*5|parfums\s*de\s*marly|maison\s*francis|initio|xerjoff|kilian|penhaligon|roja|amouage)\b/i;
 
 const BAG_RE = /\b(bag|purse|handbag|tote|clutch|crossbody|satchel|backpack|pouch|wallet)\b/i;
 const JEWELRY_RE = /\b(necklace|bracelet|ring|earring|jewelry|jewellery|pendant|bangle|anklet|brooch|charm)\b/i;
