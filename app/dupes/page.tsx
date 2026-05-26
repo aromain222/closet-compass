@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Shuffle, Search as SearchIcon, Link2, Heart, ExternalLink } from "lucide-react";
+import { detectDupeCategory } from "@/lib/dupes/categoryDetect";
 import { DupeCard } from "@/components/product/DupeCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DupeComparisonModal } from "@/components/product/DupeComparisonModal";
@@ -288,7 +289,12 @@ function DupesContent() {
         await findDupesForProduct(res.products[0]);
         return;
       }
-      setSearchResults(res.products);
+      const category = detectDupeCategory(query);
+      const SMALL_RE = /\b(vial|sample|decant|tester|room\s*spray|travel\s*size|mini\s*spray|\d+\s*ml\s*x\s*\d+|\d+\.\d+\s*ml)\b/i;
+      const filtered = category === "fragrance"
+        ? res.products.filter((p) => !SMALL_RE.test(p.title))
+        : res.products;
+      setSearchResults(filtered.length > 0 ? filtered : res.products);
       setStep("results");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed");
