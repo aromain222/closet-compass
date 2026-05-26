@@ -57,6 +57,7 @@ export function DupeComparisonModal({ comparison, onClose, onWishlist, wishliste
     { label: "Durability",    srcV: src.durabilityScore,    altV: alt.durabilityScore,    color: "bg-taupe" },
     { label: "Stretch",       srcV: src.stretchScore,       altV: alt.stretchScore,       color: "bg-lavender" },
   ].filter((r) => r.srcV > 0 || r.altV > 0);
+  const srcHasNoStats = src.softnessScore === 0 && src.breathabilityScore === 0 && src.opacityScore === 0 && src.durabilityScore === 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -89,33 +90,56 @@ export function DupeComparisonModal({ comparison, onClose, onWishlist, wishliste
 
           {/* Side-by-side product headers */}
           <div className="grid grid-cols-2 divide-x divide-soft border-b border-soft">
-            <div className="p-4 space-y-2">
+            <div className="p-4 space-y-2 flex flex-col">
               <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Original</p>
               <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-petal">
-                <Image src={src.imageUrl} alt={src.title} fill sizes="200px" className="object-cover" unoptimized />
+                {src.imageUrl && (
+                  <Image src={src.imageUrl} alt={src.title} fill sizes="200px" className="object-cover" unoptimized />
+                )}
               </div>
-              <div>
+              <div className="flex-1 flex flex-col gap-1">
                 <p className="text-[11px] text-muted uppercase tracking-wider font-medium">{src.brand}</p>
                 <p className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{src.title}</p>
-                <p className="text-lg font-semibold text-warm-dark mt-1">${src.price}</p>
+                <p className="text-lg font-semibold text-warm-dark">${src.price}</p>
+                {src.retailer && (
+                  <p className="text-[11px] text-muted">{src.retailer}</p>
+                )}
+                {src.description && src.description !== src.title && (
+                  <p className="text-[11px] text-muted leading-relaxed line-clamp-3 mt-1">{src.description}</p>
+                )}
+                {src.productUrl && src.source !== "mock" && (
+                  <a
+                    href={src.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-auto inline-flex items-center gap-1 text-[11px] text-mauve-dark hover:underline"
+                  >
+                    View original <ExternalLink size={10} />
+                  </a>
+                )}
               </div>
             </div>
 
-            <div className="p-4 space-y-2">
+            <div className="p-4 space-y-2 flex flex-col">
               <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Dupe</p>
               <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-petal">
-                <Image src={alt.imageUrl} alt={alt.title} fill sizes="200px" className="object-cover" unoptimized />
+                {alt.imageUrl && (
+                  <Image src={alt.imageUrl} alt={alt.title} fill sizes="200px" className="object-cover" unoptimized />
+                )}
               </div>
-              <div>
+              <div className="flex-1 flex flex-col gap-1">
                 <p className="text-[11px] text-muted uppercase tracking-wider font-medium">{alt.brand}</p>
                 <p className="text-sm font-medium text-warm-dark leading-snug line-clamp-2">{alt.title}</p>
-                <div className="flex items-baseline gap-2 mt-1">
+                <div className="flex items-baseline gap-2">
                   <p className="text-lg font-semibold text-warm-dark">${alt.price}</p>
                   {saving > 0 && (
                     <span className="text-xs font-semibold text-green-700">−{savingPct}%</span>
                   )}
                 </div>
-                <p className="text-xs text-muted">{alt.retailer}</p>
+                <p className="text-[11px] text-muted">{alt.retailer}</p>
+                {alt.description && alt.description !== alt.title && (
+                  <p className="text-[11px] text-muted leading-relaxed line-clamp-3 mt-1">{alt.description}</p>
+                )}
               </div>
             </div>
           </div>
@@ -162,20 +186,26 @@ export function DupeComparisonModal({ comparison, onClose, onWishlist, wishliste
             {qualityRows.length > 0 && (
               <div>
                 <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-3">Quality comparison</p>
+                {srcHasNoStats && (
+                  <p className="text-[10px] text-muted italic mb-2">Original quality stats not available — scores below are for the dupe only.</p>
+                )}
                 <div className="space-y-2.5">
                   {qualityRows.map((s) => {
                     const diff = s.altV - s.srcV;
                     return (
                       <div key={s.label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                         <div className="flex items-center gap-1.5 justify-end">
-                          <span className="text-[10px] tabular-nums text-muted">{s.srcV}</span>
-                          <div className="w-20 h-2 bg-petal rounded-full overflow-hidden">
-                            <div className={`h-full ${s.color} opacity-50 rounded-full ml-auto`} style={{ width: `${s.srcV}%` }} />
-                          </div>
+                          {s.srcV > 0
+                            ? <><span className="text-[10px] tabular-nums text-muted">{s.srcV}</span>
+                                <div className="w-20 h-2 bg-petal rounded-full overflow-hidden">
+                                  <div className={`h-full ${s.color} opacity-50 rounded-full ml-auto`} style={{ width: `${s.srcV}%` }} />
+                                </div></>
+                            : <span className="text-[10px] text-muted/40 italic w-24 text-right">N/A</span>
+                          }
                         </div>
                         <div className="text-center min-w-[80px]">
                           <span className="text-[10px] text-muted block">{s.label}</span>
-                          {diff !== 0 && (
+                          {!srcHasNoStats && diff !== 0 && (
                             <span className={`text-[10px] font-semibold ${diff < -8 ? "text-red-400" : diff > 8 ? "text-green-600" : "text-muted"}`}>
                               {diff > 0 ? `+${diff}` : diff}
                             </span>
