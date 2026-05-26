@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Shuffle, Heart, Wallet, ArrowRight } from "lucide-react";
+import { Shuffle, Heart, Wallet, ArrowRight, ShieldCheck, Lock, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
@@ -149,6 +149,59 @@ export default function HomePage() {
             </motion.div>
           ))}
         </div>
+      </section>
+
+      {/* Plaid bank connect */}
+      <section className="px-6 pb-14 max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-2xl border border-soft bg-card overflow-hidden"
+        >
+          {/* Top bar */}
+          <div className="px-6 py-5 border-b border-soft flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-success-soft/30 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck size={16} className="text-green-700" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-warm-dark">Connect your bank</p>
+              <p className="text-[11px] text-muted">Powered by Plaid — trusted by 12,000+ apps</p>
+            </div>
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="ml-auto">
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-warm-dark text-cream text-xs font-medium hover:bg-warm-mid transition-colors whitespace-nowrap"
+              >
+                Connect <ArrowRight size={11} />
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Trust bullets */}
+          <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { icon: Eye, label: "Read-only access", body: "We can see transactions — never move money." },
+              { icon: Lock, label: "256-bit encryption", body: "The same security used by your bank's own app." },
+              { icon: ShieldCheck, label: "Used by Chase & Venmo", body: "Plaid powers the apps 100M+ people already trust." },
+            ].map(({ icon: Icon, label, body }) => (
+              <div key={label} className="flex gap-3 items-start">
+                <Icon size={13} className="text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] font-semibold text-warm-dark mb-0.5">{label}</p>
+                  <p className="text-[10px] text-muted leading-relaxed">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer note */}
+          <div className="px-6 py-3 bg-petal/60 border-t border-soft">
+            <p className="text-[10px] text-muted">
+              Connecting your bank lets Material Muse automatically track fashion spending and show you how much you&apos;ve saved by choosing dupes over originals.
+            </p>
+          </div>
+        </motion.div>
       </section>
 
       {/* How it works */}
