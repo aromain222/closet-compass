@@ -186,7 +186,7 @@ export default function HomePage() {
       >
         <div className="flex-1">
           <p className="font-display text-xl font-light text-warm-dark mb-1">
-            Ready to start saving, Nisa?
+            Ready to start saving?
           </p>
           <p className="text-xs text-muted">Search any product and find your first dupe in seconds.</p>
         </div>
