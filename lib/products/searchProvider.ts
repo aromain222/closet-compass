@@ -5,7 +5,6 @@ import {
   fragranceCloneToProduct,
 } from "@/lib/intelligence/fragrance/cloneIntelligence";
 import { searchGoogleSheetFragranceDupes } from "@/lib/intelligence/fragrance/googleSheetDupes";
-import { searchShobiInspirations } from "@/lib/intelligence/fragrance/shobiInspiration";
 import { getServerEnv } from "@/lib/utils/env";
 import { detectDupeCategory } from "@/lib/dupes/categoryDetect";
 
@@ -368,11 +367,8 @@ export async function searchFragranceCommunityDupes(
 
   // Use cleaned name for all offline searches — better match rate for short specific names
   const curatedResults = findCuratedFragranceClones(cleanedName, maxPrice).map(fragranceCloneToProduct);
-  const [sheetResults, shobiResults] = await Promise.all([
-    searchGoogleSheetFragranceDupes(cleanedName, maxPrice),
-    searchShobiInspirations(cleanedName, maxPrice),
-  ]);
-  let candidates = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
+  const sheetResults = await searchGoogleSheetFragranceDupes(cleanedName, maxPrice);
+  let candidates = mergeUniqueProducts([...curatedResults, ...sheetResults]);
 
   if (!env.serperApiKey) return candidates.slice(0, 10);
 
