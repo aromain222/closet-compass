@@ -435,6 +435,23 @@ export async function searchFragranceCommunityDupes(
   return results.slice(0, 10);
 }
 
+// Search for the original fragrance cheaper at popular discount retailers.
+// Skips the isSameBrand filter — these are same-brand, different-retailer results.
+const DISCOUNT_RETAILER_QUERY = 'Jomashop OR FragranceNet OR "Avella Fragrances" OR "Aura Fragrances" OR Olfactory OR Notino OR "The Perfume Shop" OR Fragrancebuy';
+
+export async function searchFragranceDiscounters(
+  sourceName: string,
+  maxPrice: number | undefined
+): Promise<ProductResult[]> {
+  const env = getServerEnv();
+  if (!env.serperApiKey) return [];
+  const cleanedName = cleanFragranceName(sourceName);
+  return searchSerper({
+    query: `${cleanedName} ${DISCOUNT_RETAILER_QUERY}`,
+    maxPrice,
+  }).catch(() => [] as ProductResult[]);
+}
+
 export async function searchCategoryDupes(
   sourceName: string,
   category: "clothing" | "bag" | "jewelry",

@@ -89,6 +89,9 @@ Ana Abiyedh Rouge|Lattafa|BR540|85|8.5|8
 Jean Lowe Immortel|Maison Alhambra|LV L'Immensite|93|9|8.5
 Jean Lowe Nouveau|Maison Alhambra|LV Nouveau Monde|90|9|8
 Cassius Exclusif|Maison Alhambra|PDM Carlisle dark|92|9|8.5
+Beloved|Maison Alhambra|Parfums de Marly Delina|92|9|8.5
+Floral Peony|Dossier|Parfums de Marly Delina|84|8|7.5
+Club de Nuit Fleur|Armaf|Parfums de Marly Delina|86|8.5|8
 Galatea|Maison Alhambra|PDM Delina Exclusif|88|8|8
 Bright Peach|Maison Alhambra|Tom Ford Bitter Peach|90|7.5|7.5
 Lovely Cherie|Maison Alhambra|Tom Ford Lost Cherry|92|7|7.5

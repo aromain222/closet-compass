@@ -1,7 +1,7 @@
 import type { DupeComparison, ProductResult } from "@/lib/products/types";
 import { createDupeComparison } from "@/lib/dupes/dupeScore";
 import { detectDupeCategory, type DupeCategory } from "@/lib/dupes/categoryDetect";
-import { getProductSearchProvider, searchFragranceCommunityDupes, searchCategoryDupes, enrichSourceProductMaterials } from "@/lib/products/searchProvider";
+import { getProductSearchProvider, searchFragranceCommunityDupes, searchCategoryDupes, enrichSourceProductMaterials, searchFragranceDiscounters } from "@/lib/products/searchProvider";
 
 interface DupeAgentInput {
   sourceProduct: ProductResult;
@@ -82,8 +82,12 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
   const sourceProduct = await enrichSourceProductMaterials(input.sourceProduct);
 
   let candidates: ProductResult[];
+  let discountCandidates: ProductResult[] = [];
   if (category === "fragrance") {
-    candidates = await searchFragranceCommunityDupes(sourceProduct.title, input.maxPrice);
+    [candidates, discountCandidates] = await Promise.all([
+      searchFragranceCommunityDupes(sourceProduct.title, input.maxPrice),
+      searchFragranceDiscounters(sourceProduct.title, input.maxPrice),
+    ]);
   } else {
     const provider = getProductSearchProvider();
     const query = buildDupeQuery(sourceProduct, category);
@@ -114,13 +118,26 @@ export async function runDupeAgent(input: DupeAgentInput): Promise<{ comparisons
   const sourceBrand = sourceProduct.brand.toLowerCase();
   const sourceRetailer = sourceProduct.retailer.toLowerCase();
 
-  const comparisons = candidates
-    .filter((c) => c.id !== sourceProduct.id)
-    .filter((c) => c.price > 0 && c.price < sourceProduct.price)
+  const baseFilter = (c: ProductResult) =>
+    c.id !== sourceProduct.id &&
+    c.price > 0 &&
+    c.price < sourceProduct.price &&
+    c.retailer.toLowerCase() !== sourceRetailer &&
+    (category !== "fragrance" || !isFragranceSample(c));
+
+  const dupeComparisons = candidates
+    .filter(baseFilter)
     .filter((c) => !isSameBrand(c, sourceBrand, category))
-    .filter((c) => c.retailer.toLowerCase() !== sourceRetailer)
-    .filter((c) => category !== "fragrance" || !isFragranceSample(c))
+    .map((c) => createDupeComparison(sourceProduct, c, category));
+
+  // Discount retailer results: same brand OK, just cheaper from a different retailer
+  const seenIds = new Set<string>(dupeComparisons.map((c) => c.alternativeProduct.id));
+  const discountComparisons = discountCandidates
+    .filter(baseFilter)
     .map((c) => createDupeComparison(sourceProduct, c, category))
+    .filter((c) => !seenIds.has(c.alternativeProduct.id));
+
+  const comparisons = [...dupeComparisons, ...discountComparisons]
     .sort((a, b) => b.score.finalDupeScore - a.score.finalDupeScore)
     .slice(0, input.limit ?? 8);
 
