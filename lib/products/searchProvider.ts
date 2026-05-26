@@ -335,7 +335,7 @@ export async function searchFragranceCommunityDupes(
   const env = getServerEnv();
   if (!env.serperApiKey) return [];
 
-  const webQuery = `best "${sourceName}" dupe clone Lattafa OR Rasasi OR Afnan OR Rayhaan OR Armaf`;
+  const webQuery = `best "${sourceName}" dupe clone alternative fragrance`;
 
   // Step 1: Web search + Reddit in parallel to find community-recommended dupe names
   let dupeNames: string[] = [];

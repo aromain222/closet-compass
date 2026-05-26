@@ -291,8 +291,9 @@ function DupesContent() {
       }
       const category = detectDupeCategory(query);
       const SMALL_RE = /\b(vial|sample|decant|tester|room\s*spray|travel\s*size|mini\s*spray|\d+\s*ml\s*x\s*\d+|\d+\.\d+\s*ml)\b/i;
+      const FRAG_PRODUCT_RE = /\b(parfums?|perfumes?|fragrance|cologne|eau\s*de|edt|edp|toilette|scent)\b/i;
       const filtered = category === "fragrance"
-        ? res.products.filter((p) => !SMALL_RE.test(p.title))
+        ? res.products.filter((p) => !SMALL_RE.test(p.title) && FRAG_PRODUCT_RE.test(p.title))
         : res.products;
       setSearchResults(filtered.length > 0 ? filtered : res.products);
       setStep("results");
