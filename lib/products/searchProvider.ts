@@ -366,25 +366,34 @@ export async function searchFragranceCommunityDupes(
   const env = getServerEnv();
   const cleanedName = cleanFragranceName(sourceName);
 
-  const curatedResults = findCuratedFragranceClones(sourceName, maxPrice).map(fragranceCloneToProduct);
+  // Use cleaned name for all offline searches — better match rate for short specific names
+  const curatedResults = findCuratedFragranceClones(cleanedName, maxPrice).map(fragranceCloneToProduct);
   const [sheetResults, shobiResults] = await Promise.all([
-    searchGoogleSheetFragranceDupes(sourceName, maxPrice),
-    searchShobiInspirations(sourceName, maxPrice),
+    searchGoogleSheetFragranceDupes(cleanedName, maxPrice),
+    searchShobiInspirations(cleanedName, maxPrice),
   ]);
   let candidates = mergeUniqueProducts([...curatedResults, ...sheetResults, ...shobiResults]);
 
   if (!env.serperApiKey) return candidates.slice(0, 10);
 
-  // Supplement with ME brand shopping search when results are sparse
-  if (candidates.length < 5) {
-    const meHits = await searchSerper({
-      query: `"${cleanedName}" Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR "Fragrance World" OR Ajmal OR "Paris Corner" OR Emper`,
-      maxPrice,
-    }).catch(() => [] as ProductResult[]);
-    candidates = mergeUniqueProducts([...candidates, ...meHits]);
+  // When offline results are sparse, run ME + Western dupe brand searches in parallel.
+  // Do NOT use quoted phrases — ME products mention the original in descriptions,
+  // not necessarily in their title, so unquoted matching is required.
+  if (candidates.length < 8) {
+    const [meHits, westernHits] = await Promise.all([
+      searchSerper({
+        query: `${cleanedName} dupe Lattafa OR Afnan OR "Maison Alhambra" OR Armaf OR Rayhaan OR Rasasi OR Ajmal OR Emper OR "Paris Corner"`,
+        maxPrice,
+      }).catch(() => [] as ProductResult[]),
+      searchSerper({
+        query: `${cleanedName} dupe alternative Dossier OR Oakcha OR "ALT. Fragrances" OR "Club de Nuit" OR "French Avenue"`,
+        maxPrice,
+      }).catch(() => [] as ProductResult[]),
+    ]);
+    candidates = mergeUniqueProducts([...candidates, ...meHits, ...westernHits]);
   }
 
-  if (candidates.length >= 5) return candidates.slice(0, 10);
+  if (candidates.length >= 6) return candidates.slice(0, 10);
 
   // Web + Reddit search when still sparse — extracts community-recommended dupe names
   let dupeNames: string[] = [];
@@ -412,7 +421,7 @@ export async function searchFragranceCommunityDupes(
 
   if (dupeNames.length === 0) {
     const broadHits = await searchSerper({
-      query: `Lattafa OR Rasasi OR Dossier OR Oakcha OR Armaf "${cleanedName}" dupe`,
+      query: `${cleanedName} dupe Lattafa OR Rasasi OR Dossier OR Oakcha OR Armaf`,
       maxPrice,
     }).catch(() => [] as ProductResult[]);
     return mergeUniqueProducts([...candidates, ...broadHits]).slice(0, 10);
