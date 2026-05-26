@@ -297,7 +297,9 @@ async function scrapeRedditSnippets(
 
 /* ── Fragrance community dupe search ── */
 
-const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud";
+// Middle Eastern + popular western dupe brands surfaced by community searches
+const ME_BRANDS = "Lattafa, Rasasi, Afnan, Rayhaan, Armaf, Ajmal, Al Haramain, Swiss Arabian, Ard Al Zaafaran, Fragrance World, Arabian Oud, Asdaaf, Maison Alhambra, Zimaya, Surrati";
+const WESTERN_DUPE_BRANDS = "Dossier, Oakcha, ALT. Fragrances, French Avenue, Jo Milano Paris, Twist Heritage, Club de Nuit, Inspired by Glamour, Zara, GENERIC Impression";
 
 async function extractDupeNames(
   snippets: Array<{ title?: string; snippet?: string }>,
@@ -309,7 +311,7 @@ async function extractDupeNames(
   const client = new Anthropic({ apiKey });
   const context = snippets.slice(0, 10).map((s) => `${s.title ?? ""}: ${s.snippet ?? ""}`).join("\n");
   const hint = category === "fragrance"
-    ? `Strongly prefer Middle Eastern fragrance brands (${ME_BRANDS}) when they appear.`
+    ? `Prefer Middle Eastern brands (${ME_BRANDS}) and popular western dupe brands (${WESTERN_DUPE_BRANDS}) when they appear. Prioritize ME brands above all.`
     : `Focus on affordable alternatives with similar style and materials.`;
   try {
     const msg = await client.messages.create({
@@ -317,7 +319,7 @@ async function extractDupeNames(
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `From these community posts about ${category} dupes for "${sourceName}", extract specific product names (brand + product name) recommended as dupes or cheaper alternatives. ${hint} Also look for French Avenue products (e.g. Liquid Brun) which are popular viral dupes. Return a JSON array of strings, max 5 names. Return [] if none found.\n\n${context}`,
+        content: `From these community posts about ${category} dupes for "${sourceName}", extract specific product names (brand + product name) recommended as dupes or cheaper alternatives. ${hint} Return a JSON array of strings, max 5 names. Return [] if none found.\n\n${context}`,
       }],
     });
     const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
@@ -361,9 +363,9 @@ export async function searchFragranceCommunityDupes(
     console.error("[Fragrance] community search error:", err);
   }
 
-  // Fallback: direct shopping search biased toward ME brands
+  // Fallback: broad dupe brand shopping search
   if (dupeNames.length === 0) {
-    return searchSerper({ query: `Lattafa OR Rasasi OR Afnan ${sourceName} dupe`, maxPrice });
+    return searchSerper({ query: `Lattafa OR Rasasi OR Dossier OR Oakcha OR Armaf "${sourceName}" dupe`, maxPrice });
   }
 
   // Step 2: Search shopping for each community-recommended dupe
