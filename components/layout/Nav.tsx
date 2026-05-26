@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shuffle, Heart, Wallet, Settings } from "lucide-react";
+import { Shuffle, Heart, Wallet, Settings, Home } from "lucide-react";
 
 const links = [
+  { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/dupes", label: "Dupes", icon: Shuffle },
   { href: "/wishlist", label: "Saved", icon: Heart },
   { href: "/budget", label: "Spending", icon: Wallet },
@@ -24,8 +25,8 @@ export function Nav() {
           </span>
         </div>
         <nav className="flex flex-col gap-1 px-3 flex-1">
-          {links.map(({ href, label, icon: Icon }) => {
-            const active = pathname.startsWith(href);
+          {links.map(({ href, label, icon: Icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -49,8 +50,8 @@ export function Nav() {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-soft flex items-center justify-around px-2 pb-safe">
-        {links.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
+        {links.map(({ href, label, icon: Icon, exact }) => {
+          const active = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link
               key={href}
